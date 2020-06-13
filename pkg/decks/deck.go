@@ -1,7 +1,7 @@
 package deck
 
 import (
-	card "github.com/lucasalmeron/backtabgo/cards"
+	card "github.com/lucasalmeron/backtabgo/pkg/cards"
 )
 
 type Deck struct {
