@@ -33,7 +33,7 @@ func (c *Player) Read() {
 		c.Socket.Close()
 	}()
 
-	message := Message{Type: "joinPlayer", Data: "New Player Join", PlayerID: c.ID, Name: c.Name, Team: c.Team}
+	message := Message{Type: "connected", Data: "connection success", PlayerID: c.ID, Name: c.Name, Team: c.Team}
 
 	c.GameRoomChannel <- message
 

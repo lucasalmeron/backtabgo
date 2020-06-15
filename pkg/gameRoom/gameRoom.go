@@ -48,9 +48,14 @@ func (gameRoom *GameRoom) Start() {
 	for message := range gameRoom.GameRoomChannel {
 		fmt.Println("message ", message)
 		switch message.Type {
-		case "joinPlayer":
+		case "connected":
+			gameRoom.Players[message.PlayerID].Write(message)
+			message.Type = "joinPlayer"
+			message.Type = "New Player Joined"
 			for _, player := range gameRoom.Players {
-				player.Write(message)
+				if player.ID != message.PlayerID {
+					player.Write(message)
+				}
 			}
 
 		case "kickPlayerTimeOut":
@@ -60,12 +65,15 @@ func (gameRoom *GameRoom) Start() {
 			}
 		case "changeName":
 			var pl = gameRoom.Players[message.PlayerID]
-			pl.Name = fmt.Sprintf("%v", message.Data)
+			if pl != nil {
+				pl.Name = fmt.Sprintf("%v", message.Data)
 
-			for _, player := range gameRoom.Players {
-				message.Name = fmt.Sprintf("%v", message.Data)
-				player.Write(message)
+				for _, player := range gameRoom.Players {
+					message.Name = fmt.Sprintf("%v", message.Data)
+					player.Write(message)
+				}
 			}
+
 		}
 
 		/*if player.ID != message.PlayerID {

@@ -29,6 +29,7 @@
                 }
                 ws.onmessage = function (evt) {
                     print("RESPONSE: " + evt.data);
+                    console.log(JSON.parse(evt.data))
                 }
                 ws.onerror = function (evt) {
                     console.log(evt)
@@ -41,6 +42,7 @@
                     return false;
                 }
                 print("SEND: " + input.value);
+                console.log(input.value)
                 ws.send(input.value);
                 return false;
             };
