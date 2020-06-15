@@ -28,7 +28,7 @@ func main() {
 
 	router := mux.NewRouter().StrictSlash(true)
 
-	router.Path("/createroom").HandlerFunc(createRoom)
+	router.Path("/createroom").HandlerFunc(createRoom).Methods("GET", "OPTIONS")
 	router.Path("/joinroom/{gameroom}").HandlerFunc(joinRoom)
 
 	srv := &http.Server{
@@ -91,6 +91,7 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
 	response.GameRoomID = gameRoom.ID.String()
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	json.NewEncoder(w).Encode(response)
 }
 
@@ -113,7 +114,7 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
 		}
 
 		player := &player.Player{
-			ID:              uuid.Must(uuid.NewUUID()),
+			ID:              uuid.New(),
 			Name:            "toto",
 			Socket:          conn,
 			GameRoomChannel: gameRoom.GameRoomChannel,

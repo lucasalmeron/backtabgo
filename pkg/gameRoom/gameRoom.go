@@ -28,7 +28,7 @@ type GameRoom struct {
 
 func CreateGameRoom() *GameRoom {
 	return &GameRoom{
-		ID:              uuid.Must(uuid.NewUUID()),
+		ID:              uuid.New(),
 		Team1:           map[uuid.UUID]player.Player{},
 		Team2:           map[uuid.UUID]player.Player{},
 		Team1Score:      0,
@@ -50,8 +50,8 @@ func (gameRoom *GameRoom) Start() {
 		fmt.Println("message ", message)
 
 		for _, player := range gameRoom.Team1 {
-			if player.ID != message.Player.ID {
-				player.Write(1, message.Message)
+			if player.ID != message.PlayerID {
+				player.Write(message)
 			}
 		}
 	}

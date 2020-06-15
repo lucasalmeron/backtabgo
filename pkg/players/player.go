@@ -9,20 +9,21 @@ import (
 )
 
 type Message struct {
-	Type    int     `json:"type"`
-	Message string  `json:"message"`
-	Player  *Player `json:"player"`
+	Type     int       `json:"type"`
+	Message  string    `json:"message"`
+	PlayerID uuid.UUID `json:"playerID"`
+	Name     string    `json:"name"`
 }
 
 type Player struct {
-	ID              uuid.UUID       `json:"id"`
-	Name            string          `json:"name"`
-	Socket          *websocket.Conn `json:"socket"`
+	ID              uuid.UUID `json:"id"`
+	Name            string    `json:"name"`
+	Socket          *websocket.Conn
 	GameRoomChannel chan Message
 }
 
-func (c *Player) Write(messageType int, message string) {
-	c.Socket.WriteJSON(Message{Type: messageType, Message: message})
+func (c *Player) Write(message Message) {
+	c.Socket.WriteJSON(message)
 }
 
 func (c *Player) Read() {
@@ -37,7 +38,7 @@ func (c *Player) Read() {
 			log.Println(err)
 			return
 		}
-		message := Message{Type: messageType, Message: string(p), Player: c}
+		message := Message{Type: messageType, Message: string(p), PlayerID: c.ID, Name: c.Name}
 		//c.Pool.Broadcast <- message
 		c.GameRoomChannel <- message
 		fmt.Printf("player: %+v\n", c)
