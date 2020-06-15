@@ -1,11 +1,12 @@
 package deck
 
 import (
+	"github.com/google/uuid"
 	card "github.com/lucasalmeron/backtabgo/pkg/cards"
 )
 
 type Deck struct {
-	ID    int         `json:"id"`
+	ID    uuid.UUID   `json:"id"`
 	Name  string      `json:"name"`
 	Theme string      `json:"theme"`
 	Cards []card.Card `json:"cards"`

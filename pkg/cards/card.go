@@ -1,7 +1,9 @@
 package card
 
+import "github.com/google/uuid"
+
 type Card struct {
-	ID             int      `json:"id"`
-	Word           string   `json:"word"`
-	ForbbidenWords []string `json:"forbbidenWords"`
+	ID             uuid.UUID `json:"id"`
+	Word           string    `json:"word"`
+	ForbbidenWords []string  `json:"forbbidenWords"`
 }

@@ -2,33 +2,43 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"github.com/lucasalmeron/backtabgo/pkg/gameRoom"
+	player "github.com/lucasalmeron/backtabgo/pkg/players"
 )
 
 var addr = flag.String("addr", "127.0.0.1:3500", "Dirección IP y puerto")
 
-var upgrader = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }} // use default options
+var upgrader = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
+var gameRooms = map[uuid.UUID]gameRoom.GameRoom{}
 
 func main() {
 
+	router := mux.NewRouter().StrictSlash(true)
+
+	router.Path("/createroom").HandlerFunc(createRoom)
+	router.Path("/joinroom/{gameroom}").HandlerFunc(joinRoom)
+
 	srv := &http.Server{
-		//Handler: router,
-		Addr: *addr,
+		Handler: router,
+		Addr:    *addr,
 		// Good practice: enforce timeouts for servers you create!
 		WriteTimeout:   15 * time.Second,
 		ReadTimeout:    15 * time.Second,
 		MaxHeaderBytes: 1 << 20, // 1 MiB
 	}
-
-	http.HandleFunc("/echo", echo)
 
 	// Canal para señalar conexiones inactivas cerradas.
 	conxCerradas := make(chan struct{})
@@ -67,25 +77,51 @@ func waitForShutdown(conxCerradas chan struct{}, srv *http.Server) {
 	close(conxCerradas)
 }
 
-func echo(w http.ResponseWriter, r *http.Request) {
+func createRoom(w http.ResponseWriter, r *http.Request) {
 
-	c, err := upgrader.Upgrade(w, r, nil)
+	gameRoom := gameRoom.CreateGameRoom()
+	gameRooms[gameRoom.ID] = *gameRoom
+	fmt.Println(gameRooms)
+	go gameRoom.Start()
+	fmt.Println("Goroutines \t", runtime.NumGoroutine())
+
+	var response struct {
+		GameRoomID string `json:"gameRoomID"`
+	}
+	response.GameRoomID = gameRoom.ID.String()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func joinRoom(w http.ResponseWriter, r *http.Request) {
+
+	fmt.Println("WebSocket Endpoint Hit")
+	gameRoomID := mux.Vars(r)["gameroom"]
+
+	key, err := uuid.Parse(gameRoomID)
 	if err != nil {
-		log.Print("upgrade:", err)
+		fmt.Fprintf(w, "%+v\n", err)
+		w.WriteHeader(400)
+		json.NewEncoder(w).Encode("{'status':400,'message':'Game room doesn't exist'")
 		return
 	}
-	defer c.Close()
-	for {
-		mt, message, err := c.ReadMessage()
+	if gameRoom, ok := gameRooms[key]; ok {
+		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			log.Println("read:", err)
-			break
+			fmt.Fprintf(w, "%+v\n", err)
 		}
-		log.Printf("recv: %s", message)
-		err = c.WriteMessage(mt, message)
-		if err != nil {
-			log.Println("write:", err)
-			break
+
+		player := &player.Player{
+			ID:              uuid.Must(uuid.NewUUID()),
+			Name:            "toto",
+			Socket:          conn,
+			GameRoomChannel: gameRoom.GameRoomChannel,
 		}
+		gameRoom.Team1[player.ID] = *player
+
+		player.Read()
+
 	}
+
 }
