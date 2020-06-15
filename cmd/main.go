@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -81,7 +82,8 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
 
 	gameRoom := gameRoom.CreateGameRoom()
 	gameRooms[gameRoom.ID] = *gameRoom
-	fmt.Println(gameRooms)
+	//fmt.Println(gameRooms)
+
 	go gameRoom.Start()
 	fmt.Println("Goroutines \t", runtime.NumGoroutine())
 
@@ -113,13 +115,15 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "%+v\n", err)
 		}
 
+		playerNumber := strconv.Itoa(len(gameRoom.Players) + 1)
 		player := &player.Player{
 			ID:              uuid.New(),
-			Name:            "toto",
+			Name:            "Player " + playerNumber,
+			Team:            1,
 			Socket:          conn,
 			GameRoomChannel: gameRoom.GameRoomChannel,
 		}
-		gameRoom.Team1[player.ID] = *player
+		gameRoom.Players[player.ID] = player
 
 		player.Read()
 

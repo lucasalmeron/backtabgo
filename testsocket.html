@@ -44,6 +44,16 @@
                 ws.send(input.value);
                 return false;
             };
+            document.getElementById("createroom").onclick = function (evt) {
+                fetch('http://localhost:3500/createroom')
+                    .then(function(response) {
+                        return response.json();
+                    })
+                    .then(function(myJson) {
+                        console.log(myJson)
+                        gameroom.value = myJson.gameRoomID
+                    });
+            };
             document.getElementById("close").onclick = function (evt) {
                 if (!ws) {
                     return false;
@@ -64,6 +74,7 @@
                     You can change the message and send multiple times.
                     <p>
                         <form>
+                            <button id="createroom">Create Room</button>
                             <input id="gameroom" type="text" value="game room">
                             <button id="open">Open</button>
                             <button id="close">Close</button>
