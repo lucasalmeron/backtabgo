@@ -84,7 +84,7 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
 	gameRooms[gameRoom.ID] = *gameRoom
 	//fmt.Println(gameRooms)
 
-	go gameRoom.Start()
+	go gameRoom.StartListen()
 	fmt.Println("Goroutines \t", runtime.NumGoroutine())
 
 	var response struct {
@@ -106,7 +106,7 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Fprintf(w, "%+v\n", err)
 		w.WriteHeader(400)
-		json.NewEncoder(w).Encode("{'status':400,'message':'Game room doesn't exist'")
+		json.NewEncoder(w).Encode("{'status':400,'message':'Game room doesn't exist'") //esto hay q hacerlo bien
 		return
 	}
 	if gameRoom, ok := gameRooms[key]; ok {
@@ -119,9 +119,29 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
 		player := &player.Player{
 			ID:              uuid.New(),
 			Name:            "Player " + playerNumber,
-			Team:            1,
 			Socket:          conn,
 			GameRoomChannel: gameRoom.GameRoomChannel,
+		}
+
+		//balance teams
+		playerTeam1Count := 0
+		playerTeam2Count := 0
+		for _, player := range gameRoom.Players {
+			if player.Team == 1 {
+				playerTeam1Count++
+			} else {
+				playerTeam2Count++
+			}
+		}
+		if playerTeam1Count > playerTeam2Count {
+			player.Team = 2
+		} else {
+			player.Team = 1
+		}
+
+		//set admin
+		if len(gameRoom.Players) == 0 {
+			player.Admin = true
 		}
 		gameRoom.Players[player.ID] = player
 

@@ -2,7 +2,6 @@ package gameRoom
 
 import (
 	"fmt"
-	"runtime"
 	"time"
 
 	"github.com/google/uuid"
@@ -44,10 +43,17 @@ func CreateGameRoom() *GameRoom {
 
 }
 
-func (gameRoom *GameRoom) Start() {
+//StartListen asdasd
+func (gameRoom *GameRoom) StartListen() {
 	for message := range gameRoom.GameRoomChannel {
 		fmt.Println("message ", message)
 		switch message.Type {
+		/*case "getPlayerList":
+
+		for _, player := range gameRoom.Players {
+
+		}*/
+
 		case "connected":
 			gameRoom.Players[message.PlayerID].Write(message)
 			message.Type = "joinPlayer"
@@ -57,8 +63,13 @@ func (gameRoom *GameRoom) Start() {
 					player.Write(message)
 				}
 			}
-
 		case "kickPlayerTimeOut":
+			delete(gameRoom.Players, message.PlayerID)
+			for _, player := range gameRoom.Players {
+				player.Write(message)
+			}
+		case "playerDisconnected":
+			//maybe i should set new admin here
 			delete(gameRoom.Players, message.PlayerID)
 			for _, player := range gameRoom.Players {
 				player.Write(message)
@@ -75,11 +86,5 @@ func (gameRoom *GameRoom) Start() {
 			}
 
 		}
-
-		/*if player.ID != message.PlayerID {
-			player.Write(message)
-		}*/
-
-		fmt.Println("Goroutines \t", runtime.NumGoroutine())
 	}
 }

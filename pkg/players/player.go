@@ -2,6 +2,7 @@ package player
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,6 +21,7 @@ type Player struct {
 	ID              uuid.UUID `json:"id"`
 	Name            string    `json:"name"`
 	Team            int       `json:"team"`
+	Admin           bool      `json:"-"`
 	Socket          *websocket.Conn
 	GameRoomChannel chan Message
 }
@@ -37,15 +39,28 @@ func (c *Player) Read() {
 
 	c.GameRoomChannel <- message
 
+	c.Socket.CloseHandler()
+
 	for {
 		c.Socket.SetReadDeadline(time.Now().Add(10 * time.Minute))
+
 		m := Message{}
 		err := c.Socket.ReadJSON(&m)
 		if err != nil {
-			message := Message{Type: "kickPlayerTimeOut", Data: "Time out", PlayerID: c.ID, Name: c.Name, Team: c.Team}
-			c.GameRoomChannel <- message
-			fmt.Println("TimeOut", err)
-			break
+			if ok := strings.Contains(err.Error(), "timeout"); ok {
+				message := Message{Type: "kickPlayerTimeOut", Data: "Time out", PlayerID: c.ID, Name: c.Name, Team: c.Team}
+				c.GameRoomChannel <- message
+				fmt.Println("TimeOut", err)
+				break
+			}
+			if ok := strings.Contains(err.Error(), "websocket: close 1005 (no status)"); ok {
+				message := Message{Type: "playerDisconnected", Data: "Player Disconnected", PlayerID: c.ID, Name: c.Name, Team: c.Team}
+				c.GameRoomChannel <- message
+				fmt.Println("Disconnected", err)
+				break
+			}
+			fmt.Printf("unexpected type %T", err)
+			fmt.Println("Error ", err)
 		}
 
 		m.PlayerID = c.ID
