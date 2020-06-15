@@ -48,15 +48,9 @@ func (c *Player) Read() {
 			break
 		}
 
-		/*messageType, p, err := c.Socket.ReadMessage()
-		if err != nil {
-			log.Println(err)
-			return
-		}*/
-
-		//hacer el break del for cuando se termina el juego o timeout
-
-		//message := Message{Type: messageType, Message: string(p), PlayerID: c.ID, Name: c.Name}
+		m.PlayerID = c.ID
+		m.Name = c.Name
+		m.Team = c.Team
 
 		c.GameRoomChannel <- m
 		//fmt.Printf("player: %+v\n", c)
