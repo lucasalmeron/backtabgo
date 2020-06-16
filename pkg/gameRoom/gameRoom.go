@@ -47,7 +47,7 @@ func CreateGameRoom() *GameRoom {
 func (gameRoom *GameRoom) StartListen() {
 	for message := range gameRoom.GameRoomChannel {
 		fmt.Println("message ", message)
-		switch message.Type {
+		switch message.Action {
 		case "getPlayerList":
 			playerList := make([]player.Player, 0)
 
@@ -66,8 +66,8 @@ func (gameRoom *GameRoom) StartListen() {
 			gameRoom.Players[message.PlayerID].Write(message)
 
 			//broadcast new player
-			message.Type = "joinPlayer"
-			message.Data = "New Player Joined"
+			message.Action = "joinPlayer"
+			message.Data = gameRoom.Players[message.PlayerID]
 			for _, player := range gameRoom.Players {
 				if player.ID != message.PlayerID {
 					player.Write(message)

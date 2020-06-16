@@ -10,7 +10,7 @@ import (
 )
 
 type Message struct {
-	Type     string      `json:"type"`
+	Action   string      `json:"action"`
 	Data     interface{} `json:"data"`
 	PlayerID uuid.UUID   `json:"playerID"`
 	Name     string      `json:"name"`
@@ -35,7 +35,7 @@ func (c *Player) Read() {
 		c.Socket.Close()
 	}()
 
-	message := Message{Type: "connected", Data: "connection success", PlayerID: c.ID, Name: c.Name, Team: c.Team}
+	message := Message{Action: "connected", Data: "connection success", PlayerID: c.ID, Name: c.Name, Team: c.Team}
 
 	c.GameRoomChannel <- message
 
@@ -48,13 +48,13 @@ func (c *Player) Read() {
 		err := c.Socket.ReadJSON(&m)
 		if err != nil {
 			if ok := strings.Contains(err.Error(), "timeout"); ok {
-				message := Message{Type: "kickPlayerTimeOut", Data: "Time out", PlayerID: c.ID, Name: c.Name, Team: c.Team}
+				message := Message{Action: "kickPlayerTimeOut", Data: "Time out", PlayerID: c.ID, Name: c.Name, Team: c.Team}
 				c.GameRoomChannel <- message
 				fmt.Println("TimeOut", err)
 				break
 			}
 			if ok := strings.Contains(err.Error(), "websocket: close 1005 (no status)"); ok {
-				message := Message{Type: "playerDisconnected", Data: "Player Disconnected", PlayerID: c.ID, Name: c.Name, Team: c.Team}
+				message := Message{Action: "playerDisconnected", Data: "Player Disconnected", PlayerID: c.ID, Name: c.Name, Team: c.Team}
 				c.GameRoomChannel <- message
 				fmt.Println("Disconnected", err)
 				break
