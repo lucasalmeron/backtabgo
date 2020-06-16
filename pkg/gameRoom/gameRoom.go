@@ -55,12 +55,19 @@ func (gameRoom *GameRoom) StartListen() {
 				playerList = append(playerList, *player)
 			}
 			message.Data = playerList
-			fmt.Println(message)
 			gameRoom.Players[message.PlayerID].Write(message)
 		case "connected":
+			//send PlayerList to new Player
+			playerList := make([]player.Player, 0)
+			for _, player := range gameRoom.Players {
+				playerList = append(playerList, *player)
+			}
+			message.Data = playerList
 			gameRoom.Players[message.PlayerID].Write(message)
+
+			//broadcast new player
 			message.Type = "joinPlayer"
-			message.Type = "New Player Joined"
+			message.Data = "New Player Joined"
 			for _, player := range gameRoom.Players {
 				if player.ID != message.PlayerID {
 					player.Write(message)
