@@ -1,6 +1,7 @@
 package gameRoom
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -8,7 +9,6 @@ import (
 	card "github.com/lucasalmeron/backtabgo/pkg/cards"
 	deck "github.com/lucasalmeron/backtabgo/pkg/decks"
 	player "github.com/lucasalmeron/backtabgo/pkg/players"
-	"github.com/mitchellh/mapstructure"
 )
 
 type GameRoom struct {
@@ -54,14 +54,11 @@ func (gameRoom *GameRoom) StartListen() {
 		switch message.Action {
 		case "updateRoomOptions":
 			if gameRoom.Players[message.PlayerID].Admin {
-				var output GameRoom
-				cfg := &mapstructure.DecoderConfig{
-					Metadata: nil,
-					Result:   &output,
-					TagName:  "data",
-				}
-				decoder, _ := mapstructure.NewDecoder(cfg)
-				decoder.Decode(message.Data)
+				//parsing map[string] interface{} to struct
+				output := &GameRoom{}
+				j, _ := json.Marshal(message.Data)
+				json.Unmarshal(j, output)
+				//parsing map[string] interface{} to struct
 
 				gameRoom.MaxTurnAttemps = output.MaxTurnAttemps
 				gameRoom.MaxPoints = output.MaxPoints
