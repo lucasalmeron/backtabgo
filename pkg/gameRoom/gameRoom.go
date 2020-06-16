@@ -48,12 +48,15 @@ func (gameRoom *GameRoom) StartListen() {
 	for message := range gameRoom.GameRoomChannel {
 		fmt.Println("message ", message)
 		switch message.Type {
-		/*case "getPlayerList":
+		case "getPlayerList":
+			playerList := make([]player.Player, 0)
 
-		for _, player := range gameRoom.Players {
-
-		}*/
-
+			for _, player := range gameRoom.Players {
+				playerList = append(playerList, *player)
+			}
+			message.Data = playerList
+			fmt.Println(message)
+			gameRoom.Players[message.PlayerID].Write(message)
 		case "connected":
 			gameRoom.Players[message.PlayerID].Write(message)
 			message.Type = "joinPlayer"

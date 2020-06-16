@@ -18,12 +18,12 @@ type Message struct {
 }
 
 type Player struct {
-	ID              uuid.UUID `json:"id"`
-	Name            string    `json:"name"`
-	Team            int       `json:"team"`
-	Admin           bool      `json:"-"`
-	Socket          *websocket.Conn
-	GameRoomChannel chan Message
+	ID              uuid.UUID       `json:"id"`
+	Name            string          `json:"name"`
+	Team            int             `json:"team"`
+	Admin           bool            `json:"admin"`
+	Socket          *websocket.Conn `json:"-"`
+	GameRoomChannel chan Message    `json:"-"`
 }
 
 func (c *Player) Write(message Message) {
