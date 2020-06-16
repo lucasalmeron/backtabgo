@@ -8,6 +8,7 @@ import (
 	card "github.com/lucasalmeron/backtabgo/pkg/cards"
 	deck "github.com/lucasalmeron/backtabgo/pkg/decks"
 	player "github.com/lucasalmeron/backtabgo/pkg/players"
+	"github.com/mitchellh/mapstructure"
 )
 
 type GameRoom struct {
@@ -15,14 +16,14 @@ type GameRoom struct {
 	Players         map[uuid.UUID]*player.Player `json:"players"`
 	Team1Score      int                          `json:"team1Score"`
 	Team2Score      int                          `json:"team2Score"`
-	CurrentTurn     player.Player                `json:"currentTurn"`
+	CurrentTurn     *player.Player               `json:"currentTurn"`
 	TurnTime        time.Time                    `json:"turnTime"`
 	GameTime        time.Time                    `json:"gameTurn"`
 	MaxTurnAttemps  int                          `json:"maxTurnAttemps"`
 	Decks           map[uuid.UUID]deck.Deck      `json:"decks"`
 	CurrentCard     card.Card                    `json:"currentCard"`
 	MaxPoints       int                          `json:"maxPoints"`
-	GameRoomChannel chan player.Message
+	GameRoomChannel chan player.Message          `json:"-"`
 }
 
 func CreateGameRoom() *GameRoom {
@@ -31,7 +32,7 @@ func CreateGameRoom() *GameRoom {
 		Players:         map[uuid.UUID]*player.Player{},
 		Team1Score:      0,
 		Team2Score:      0,
-		CurrentTurn:     player.Player{},
+		CurrentTurn:     &player.Player{},
 		TurnTime:        time.Time{},
 		GameTime:        time.Time{},
 		MaxTurnAttemps:  0,
@@ -51,6 +52,29 @@ func (gameRoom *GameRoom) StartListen() {
 	for message := range gameRoom.GameRoomChannel {
 		fmt.Println("message ", message)
 		switch message.Action {
+		case "updateRoomOptions":
+			if gameRoom.Players[message.PlayerID].Admin {
+				var output GameRoom
+				cfg := &mapstructure.DecoderConfig{
+					Metadata: nil,
+					Result:   &output,
+					TagName:  "data",
+				}
+				decoder, _ := mapstructure.NewDecoder(cfg)
+				decoder.Decode(message.Data)
+
+				gameRoom.MaxTurnAttemps = output.MaxTurnAttemps
+				gameRoom.MaxPoints = output.MaxPoints
+
+				message.Data = gameRoom
+				gameRoom.Players[message.PlayerID].Write(message)
+			}
+		case "changeTeam":
+			gameRoom.Players[message.PlayerID].Team = message.Data.(int)
+			message.Data = gameRoom.Players[message.PlayerID]
+			for _, player := range gameRoom.Players {
+				player.Write(message)
+			}
 		case "getPlayerList":
 			playerList := make([]player.Player, 0)
 

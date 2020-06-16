@@ -67,6 +67,10 @@ func (c *Player) Read(reconnect bool) {
 				fmt.Println("Disconnected", err)
 				break
 			}
+			if ok := strings.Contains(err.Error(), "websocket: close 1006 (abnormal closure): unexpected EOF"); ok {
+				fmt.Println("Error ", err)
+				break
+			}
 			fmt.Printf("unexpected type %T", err)
 			fmt.Println("Error ", err)
 		}

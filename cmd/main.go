@@ -146,6 +146,8 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
 		}
 		gameRoom.Players[player.ID] = player
 
+		fmt.Println("Goroutines \t", runtime.NumGoroutine())
+
 		player.Read(false)
 
 	}
