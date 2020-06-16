@@ -12,9 +12,9 @@ import (
 type Message struct {
 	Action   string      `json:"action"`
 	Data     interface{} `json:"data"`
-	PlayerID uuid.UUID   `json:"playerID"`
-	Name     string      `json:"name"`
-	Team     int         `json:"team"`
+	PlayerID uuid.UUID   `json:"triggerPlayer"`
+	//Name     string      `json:"name"`
+	//Team     int         `json:"team"`
 }
 
 type Player struct {
@@ -30,31 +30,39 @@ func (c *Player) Write(message Message) {
 	c.Socket.WriteJSON(message)
 }
 
-func (c *Player) Read() {
-	defer func() {
-		c.Socket.Close()
-	}()
+func (c *Player) Read(reconnect bool) {
+	defer c.Socket.Close()
+	var message Message
 
-	message := Message{Action: "connected", Data: "connection success", PlayerID: c.ID, Name: c.Name, Team: c.Team}
+	if reconnect {
+		message = Message{Action: "reconnected", Data: "reconnection success", PlayerID: c.ID}
+	} else {
+		message = Message{Action: "connected", Data: "connection success", PlayerID: c.ID}
+	}
 
 	c.GameRoomChannel <- message
 
-	c.Socket.CloseHandler()
+	c.Socket.SetReadDeadline(time.Now().Add(10 * time.Minute))
 
 	for {
-		c.Socket.SetReadDeadline(time.Now().Add(10 * time.Minute))
 
 		m := Message{}
 		err := c.Socket.ReadJSON(&m)
 		if err != nil {
 			if ok := strings.Contains(err.Error(), "timeout"); ok {
-				message := Message{Action: "kickPlayerTimeOut", Data: "Time out", PlayerID: c.ID, Name: c.Name, Team: c.Team}
+				message = Message{Action: "kickPlayerTimeOut", Data: "Time out", PlayerID: c.ID}
 				c.GameRoomChannel <- message
 				fmt.Println("TimeOut", err)
 				break
 			}
 			if ok := strings.Contains(err.Error(), "websocket: close 1005 (no status)"); ok {
-				message := Message{Action: "playerDisconnected", Data: "Player Disconnected", PlayerID: c.ID, Name: c.Name, Team: c.Team}
+				message = Message{Action: "playerDisconnected", Data: "Player Disconnected", PlayerID: c.ID}
+				c.GameRoomChannel <- message
+				fmt.Println("Disconnected", err)
+				break
+			}
+			if ok := strings.Contains(err.Error(), "websocket: close 1001 (going away)"); ok {
+				message = Message{Action: "playerDisconnected", Data: "Player Disconnected", PlayerID: c.ID}
 				c.GameRoomChannel <- message
 				fmt.Println("Disconnected", err)
 				break
@@ -64,8 +72,8 @@ func (c *Player) Read() {
 		}
 
 		m.PlayerID = c.ID
-		m.Name = c.Name
-		m.Team = c.Team
+		//m.Name = c.Name
+		//m.Team = c.Team
 
 		c.GameRoomChannel <- m
 		//fmt.Printf("player: %+v\n", c)

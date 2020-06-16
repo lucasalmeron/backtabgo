@@ -45,6 +45,9 @@ func CreateGameRoom() *GameRoom {
 
 //StartListen asdasd
 func (gameRoom *GameRoom) StartListen() {
+	defer func() {
+		//pop gameroom
+	}()
 	for message := range gameRoom.GameRoomChannel {
 		fmt.Println("message ", message)
 		switch message.Action {
@@ -73,6 +76,23 @@ func (gameRoom *GameRoom) StartListen() {
 					player.Write(message)
 				}
 			}
+		case "reconnected":
+			//send PlayerList to new Player
+			playerList := make([]player.Player, 0)
+			for _, player := range gameRoom.Players {
+				playerList = append(playerList, *player)
+			}
+			message.Data = playerList
+			gameRoom.Players[message.PlayerID].Write(message)
+
+			//broadcast reconnected player
+			message.Action = "playerReconnected"
+			message.Data = gameRoom.Players[message.PlayerID]
+			for _, player := range gameRoom.Players {
+				if player.ID != message.PlayerID {
+					player.Write(message)
+				}
+			}
 		case "kickPlayerTimeOut":
 			delete(gameRoom.Players, message.PlayerID)
 			for _, player := range gameRoom.Players {
@@ -80,19 +100,16 @@ func (gameRoom *GameRoom) StartListen() {
 			}
 		case "playerDisconnected":
 			//maybe i should set new admin here
-			delete(gameRoom.Players, message.PlayerID)
+			//delete(gameRoom.Players, message.PlayerID)
+			message.Data = gameRoom.Players[message.PlayerID]
 			for _, player := range gameRoom.Players {
 				player.Write(message)
 			}
 		case "changeName":
-			var pl = gameRoom.Players[message.PlayerID]
-			if pl != nil {
-				pl.Name = fmt.Sprintf("%v", message.Data)
-
-				for _, player := range gameRoom.Players {
-					message.Name = fmt.Sprintf("%v", message.Data)
-					player.Write(message)
-				}
+			gameRoom.Players[message.PlayerID].Name = fmt.Sprintf("%v", message.Data)
+			message.Data = gameRoom.Players[message.PlayerID]
+			for _, player := range gameRoom.Players {
+				player.Write(message)
 			}
 
 		}

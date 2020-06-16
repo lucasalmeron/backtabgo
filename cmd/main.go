@@ -20,7 +20,7 @@ import (
 	player "github.com/lucasalmeron/backtabgo/pkg/players"
 )
 
-var addr = flag.String("addr", "127.0.0.1:3500", "Dirección IP y puerto")
+var addr = flag.String("addr", "127.0.0.1:3500", "address:port")
 
 var upgrader = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 var gameRooms = map[uuid.UUID]gameRoom.GameRoom{}
@@ -31,6 +31,7 @@ func main() {
 
 	router.Path("/createroom").HandlerFunc(createRoom).Methods("GET", "OPTIONS")
 	router.Path("/joinroom/{gameroom}").HandlerFunc(joinRoom)
+	router.Path("/reconnectroom/{gameroom}/{playerid}").HandlerFunc(reconnect)
 
 	srv := &http.Server{
 		Handler: router,
@@ -46,13 +47,13 @@ func main() {
 	// Lanzamos goroutine para esperar señal y llamar Shutdown.
 	go waitForShutdown(conxCerradas, srv)
 
-	fmt.Printf("Servidor HTTPS en puerto %s listo. CTRL+C para detener.\n", *addr)
+	fmt.Printf("Server started on %s. CTRL+C for shutdown.\n", *addr)
 	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-		log.Fatal("Error durante ListenAndServe: %v", err)
+		log.Fatal("ListenAndServe Error: %v", err)
 	}
 	// Esperamos a que el shut down termine al cerrar todas las conexiones.
 	<-conxCerradas
-	fmt.Println("Shut down del servidor HTTPS completado exitosamente.")
+	fmt.Println("Shutdown Success.")
 }
 
 // waitForShutdown para detectar señales de interrupción al proceso y hacer Shutdown.
@@ -65,13 +66,13 @@ func waitForShutdown(conxCerradas chan struct{}, srv *http.Server) {
 
 	// Si llegamos aquí, recibimos la señal, iniciamos shut down.
 	// Noten se puede usar un Context para posible límite de tiempo.
-	fmt.Println("\nShut down del servidor HTTPS iniciado...")
+	fmt.Println("\nShutdown started...")
 	// Límite de tiempo para el Shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
 		// Error aquí tiene que ser cerrando conexiones.
-		log.Printf("Error durante Shutdown: %v", err)
+		log.Printf("Shutdown Error: %v", err)
 	}
 
 	// Cerramos el canal, señalando conexiones ya cerradas.
@@ -105,8 +106,8 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
 	key, err := uuid.Parse(gameRoomID)
 	if err != nil {
 		fmt.Fprintf(w, "%+v\n", err)
-		w.WriteHeader(400)
-		json.NewEncoder(w).Encode("{'status':400,'message':'Game room doesn't exist'") //esto hay q hacerlo bien
+		//w.WriteHeader(400)
+		//json.NewEncoder(w).Encode("{'status':400,'message':'Game room doesn't exist'") //esto hay q hacerlo bien
 		return
 	}
 	if gameRoom, ok := gameRooms[key]; ok {
@@ -145,8 +146,39 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
 		}
 		gameRoom.Players[player.ID] = player
 
-		player.Read()
+		player.Read(false)
 
 	}
 
+}
+
+func reconnect(w http.ResponseWriter, r *http.Request) {
+
+	fmt.Println("WebSocket Reconnect")
+	gameRoomID := mux.Vars(r)["gameroom"]
+	playerID := mux.Vars(r)["playerid"]
+
+	roomKey, err := uuid.Parse(gameRoomID)
+	if err != nil {
+		fmt.Fprintf(w, "%+v\n", err)
+		return
+	}
+	playerKey, err := uuid.Parse(playerID)
+	if err != nil {
+		fmt.Fprintf(w, "%+v\n", err)
+		return
+	}
+
+	if gameRoom, ok := gameRooms[roomKey]; ok {
+
+		if player, ok := gameRoom.Players[playerKey]; ok {
+			conn, err := upgrader.Upgrade(w, r, nil)
+			if err != nil {
+				fmt.Fprintf(w, "%+v\n", err)
+			}
+			player.Socket = conn
+			player.Read(true)
+		}
+
+	}
 }

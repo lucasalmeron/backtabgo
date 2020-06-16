@@ -8,6 +8,7 @@
             var output = document.getElementById("output");
             var input = document.getElementById("input");
             var gameroom = document.getElementById("gameroom");
+            var player = document.getElementById("player");
             var ws;
             var print = function (message) {
                 var d = document.createElement("div");
@@ -63,6 +64,30 @@
                 ws.close();
                 return false;
             };
+            document.getElementById("reconnect").onclick = function (evt) {
+                if (ws) {
+                    return false;
+                }
+                gameroomid = gameroom.value;
+                playerid = player.value;
+                ws = new WebSocket("ws://127.0.0.1:3500/reconnectroom/"+gameroomid+"/"+playerid);
+                ws.onopen = function (evt) {
+                    print("OPEN");
+                }
+                ws.onclose = function (evt) {
+                    print("CLOSE");
+                    ws = null;
+                }
+                ws.onmessage = function (evt) {
+                    print("RESPONSE: " + evt.data);
+                    console.log(JSON.parse(evt.data))
+                }
+                ws.onerror = function (evt) {
+                    console.log(evt)
+                    print("ERROR: " + evt.data);
+                }
+                return false;
+            };
         });
     </script>
 </head>
@@ -76,10 +101,13 @@
                     You can change the message and send multiple times.
                     <p>
                         <form>
-                            <button id="createroom">Create Room</button>
-                            <input id="gameroom" type="text" value="game room">
+                            <button id="createroom" type="button">Create Room</button>
+                            <input id="gameroom" type="text" placeholder="gameroom id">
+                            <input id="player" type="text" placeholder="playerid">
+                            <br>
                             <button id="open">Open</button>
                             <button id="close">Close</button>
+                            <button id="reconnect">Reconnect</button>
                             <p><input id="input" type="text" value="Hello world!">
                                 <button id="send">Send</button>
                         </form>
