@@ -89,7 +89,11 @@ func (req *SocketRequest) updateRoomOptions() {
 		req.gameRoom.MaxPoints = output.MaxPoints
 
 		req.message.Data = req.gameRoom
-		req.gameRoom.Players[req.message.PlayerID].Write(req.message)
+		//broadcast Options
+		for _, player := range req.gameRoom.Players {
+			player.Write(req.message)
+
+		}
 	}
 }
 
