@@ -61,17 +61,23 @@ func (req *SocketRequest) changeTeam() {
 	//parsing map[string] interface{} to struct
 
 	//Change team other player if is admin
-	fmt.Println(output.ID)
-	fmt.Println(req.message.PlayerID)
 	if output.ID != req.message.PlayerID {
 		if req.gameRoom.Players[req.message.PlayerID].Admin {
-			req.gameRoom.Players[output.ID].Team = output.Team
+			if req.gameRoom.Players[output.ID].Team == 1 {
+				req.gameRoom.Players[output.ID].Team = 2
+			} else {
+				req.gameRoom.Players[output.ID].Team = 1
+			}
 			req.message.Data = req.gameRoom.Players[output.ID]
 		} else {
 			req.message.Data = "don't have permissions"
 		}
 	} else {
-		req.gameRoom.Players[req.message.PlayerID].Team = output.Team
+		if req.gameRoom.Players[req.message.PlayerID].Team == 1 {
+			req.gameRoom.Players[req.message.PlayerID].Team = 2
+		} else {
+			req.gameRoom.Players[req.message.PlayerID].Team = 1
+		}
 		req.message.Data = req.gameRoom.Players[req.message.PlayerID]
 	}
 	if req.message.Data != nil {
