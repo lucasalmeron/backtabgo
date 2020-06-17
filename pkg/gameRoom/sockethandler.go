@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/google/uuid"
+	card "github.com/lucasalmeron/backtabgo/pkg/cards"
+	deck "github.com/lucasalmeron/backtabgo/pkg/decks"
 	player "github.com/lucasalmeron/backtabgo/pkg/players"
 )
 
@@ -15,6 +18,8 @@ type SocketRequest struct {
 //Route classify the incomming message and call the appropiate function
 func (req *SocketRequest) Route() {
 	switch req.message.Action {
+	case "getDecks":
+		req.getDecks()
 	case "updateRoomOptions":
 		req.updateRoomOptions()
 	case "changeTeam":
@@ -37,6 +42,41 @@ func (req *SocketRequest) Route() {
 
 }
 
+func (req *SocketRequest) getDecks() {
+	deck1 := &deck.Deck{
+		ID:    uuid.New(),
+		Name:  "Totoro",
+		Theme: "Caca",
+		Cards: map[uuid.UUID]*card.Card{},
+	}
+	deck2 := &deck.Deck{
+		ID:    uuid.New(),
+		Name:  "Rebeca",
+		Theme: "Tolueno",
+		Cards: map[uuid.UUID]*card.Card{},
+	}
+	card1 := &card.Card{
+		ID:             uuid.New(),
+		Word:           "Caca",
+		ForbbidenWords: []string{"Culo", "Materia Fecal", "Toto", "Baño"},
+	}
+	card2 := &card.Card{
+		ID:             uuid.New(),
+		Word:           "Culo",
+		ForbbidenWords: []string{"Caca", "Materia Fecal", "Toto", "Baño"},
+	}
+	deck1.Cards[card1.ID] = card1
+	deck1.Cards[card2.ID] = card2
+
+	deck2.Cards[card1.ID] = card1
+	deck2.Cards[card2.ID] = card2
+
+	decks := []deck.Deck{*deck1, *deck2}
+
+	req.message.Data = decks
+	req.gameRoom.Players[req.message.PlayerID].Write(req.message)
+}
+
 func (req *SocketRequest) updateRoomOptions() {
 	if req.gameRoom.Players[req.message.PlayerID].Admin {
 		//parsing map[string] interface{} to struct
@@ -54,6 +94,7 @@ func (req *SocketRequest) updateRoomOptions() {
 }
 
 func (req *SocketRequest) changeTeam() {
+
 	//parsing map[string] interface{} to struct
 	output := &player.Player{}
 	j, _ := json.Marshal(req.message.Data)
@@ -100,7 +141,7 @@ func (req *SocketRequest) getPlayerList() {
 
 func (req *SocketRequest) connected() {
 	//send PlayerList to new Player
-	playerList := make([]player.Player, 0)
+	playerList := make([]player.Player, 0) //review declaration
 	for _, player := range req.gameRoom.Players {
 		playerList = append(playerList, *player)
 	}
