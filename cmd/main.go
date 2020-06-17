@@ -16,14 +16,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
-	"github.com/lucasalmeron/backtabgo/pkg/gameRoom"
+	gameroom "github.com/lucasalmeron/backtabgo/pkg/gameRoom"
 	player "github.com/lucasalmeron/backtabgo/pkg/players"
 )
 
 var addr = flag.String("addr", "127.0.0.1:3500", "address:port")
 
 var upgrader = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
-var gameRooms = map[uuid.UUID]gameRoom.GameRoom{}
+var gameRooms = map[uuid.UUID]gameroom.GameRoom{}
 
 func main() {
 
@@ -81,7 +81,7 @@ func waitForShutdown(conxCerradas chan struct{}, srv *http.Server) {
 
 func createRoom(w http.ResponseWriter, r *http.Request) {
 
-	gameRoom := gameRoom.CreateGameRoom()
+	gameRoom := gameroom.CreateGameRoom()
 	gameRooms[gameRoom.ID] = *gameRoom
 	//fmt.Println(gameRooms)
 

@@ -1,7 +1,6 @@
-package gameRoom
+package gameroom
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -26,6 +25,7 @@ type GameRoom struct {
 	GameRoomChannel chan player.Message          `json:"-"`
 }
 
+//CreateGameRoom is a constructor of GameRoom
 func CreateGameRoom() *GameRoom {
 	return &GameRoom{
 		ID:              uuid.New(),
@@ -41,98 +41,19 @@ func CreateGameRoom() *GameRoom {
 		MaxPoints:       100,
 		GameRoomChannel: make(chan player.Message),
 	}
-
 }
 
-//StartListen asdasd
+//StartListen channel and wait for player's incomming messages, then it call socketRequest to classify
 func (gameRoom *GameRoom) StartListen() {
 	defer func() {
 		//pop gameroom
 	}()
 	for message := range gameRoom.GameRoomChannel {
 		fmt.Println("message ", message)
-		switch message.Action {
-		case "updateRoomOptions":
-			if gameRoom.Players[message.PlayerID].Admin {
-				//parsing map[string] interface{} to struct
-				output := &GameRoom{}
-				j, _ := json.Marshal(message.Data)
-				json.Unmarshal(j, output)
-				//parsing map[string] interface{} to struct
-
-				gameRoom.MaxTurnAttemps = output.MaxTurnAttemps
-				gameRoom.MaxPoints = output.MaxPoints
-
-				message.Data = gameRoom
-				gameRoom.Players[message.PlayerID].Write(message)
-			}
-		case "changeTeam":
-			gameRoom.Players[message.PlayerID].Team = message.Data.(int)
-			message.Data = gameRoom.Players[message.PlayerID]
-			for _, player := range gameRoom.Players {
-				player.Write(message)
-			}
-		case "getPlayerList":
-			playerList := make([]player.Player, 0)
-
-			for _, player := range gameRoom.Players {
-				playerList = append(playerList, *player)
-			}
-			message.Data = playerList
-			gameRoom.Players[message.PlayerID].Write(message)
-		case "connected":
-			//send PlayerList to new Player
-			playerList := make([]player.Player, 0)
-			for _, player := range gameRoom.Players {
-				playerList = append(playerList, *player)
-			}
-			message.Data = playerList
-			gameRoom.Players[message.PlayerID].Write(message)
-
-			//broadcast new player
-			message.Action = "joinPlayer"
-			message.Data = gameRoom.Players[message.PlayerID]
-			for _, player := range gameRoom.Players {
-				if player.ID != message.PlayerID {
-					player.Write(message)
-				}
-			}
-		case "reconnected":
-			//send PlayerList to new Player
-			playerList := make([]player.Player, 0)
-			for _, player := range gameRoom.Players {
-				playerList = append(playerList, *player)
-			}
-			message.Data = playerList
-			gameRoom.Players[message.PlayerID].Write(message)
-
-			//broadcast reconnected player
-			message.Action = "playerReconnected"
-			message.Data = gameRoom.Players[message.PlayerID]
-			for _, player := range gameRoom.Players {
-				if player.ID != message.PlayerID {
-					player.Write(message)
-				}
-			}
-		case "kickPlayerTimeOut":
-			delete(gameRoom.Players, message.PlayerID)
-			for _, player := range gameRoom.Players {
-				player.Write(message)
-			}
-		case "playerDisconnected":
-			//maybe i should set new admin here
-			//delete(gameRoom.Players, message.PlayerID)
-			message.Data = gameRoom.Players[message.PlayerID]
-			for _, player := range gameRoom.Players {
-				player.Write(message)
-			}
-		case "changeName":
-			gameRoom.Players[message.PlayerID].Name = fmt.Sprintf("%v", message.Data)
-			message.Data = gameRoom.Players[message.PlayerID]
-			for _, player := range gameRoom.Players {
-				player.Write(message)
-			}
-
+		socketReq := SocketRequest{
+			message:  message,
+			gameRoom: gameRoom,
 		}
+		socketReq.Route()
 	}
 }
