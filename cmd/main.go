@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"strconv"
 	"sync"
 	"time"
 
@@ -18,13 +17,12 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	gameroom "github.com/lucasalmeron/backtabgo/pkg/gameRoom"
-	player "github.com/lucasalmeron/backtabgo/pkg/players"
 )
 
 var addr = flag.String("addr", "127.0.0.1:3500", "address:port")
 
 var upgrader = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
-var gameRooms = map[uuid.UUID]gameroom.GameRoom{}
+var gameRooms = map[uuid.UUID]*gameroom.GameRoom{}
 
 var wg sync.WaitGroup
 var mu sync.Mutex
@@ -86,7 +84,7 @@ func waitForShutdown(conxCerradas chan struct{}, srv *http.Server) {
 func createRoom(w http.ResponseWriter, r *http.Request) {
 
 	gameRoom := gameroom.CreateGameRoom()
-	gameRooms[gameRoom.ID] = *gameRoom
+	gameRooms[gameRoom.ID] = gameRoom
 	//fmt.Println(gameRooms)
 
 	go gameRoom.StartListen()
@@ -104,16 +102,12 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
 
 func joinRoom(w http.ResponseWriter, r *http.Request) {
 
-	wg.Add(1)
-
 	fmt.Println("WebSocket Endpoint Hit")
 	gameRoomID := mux.Vars(r)["gameroom"]
 
 	key, err := uuid.Parse(gameRoomID)
 	if err != nil {
 		fmt.Fprintf(w, "%+v\n", err)
-		//w.WriteHeader(400)
-		//json.NewEncoder(w).Encode("{'status':400,'message':'Game room doesn't exist'") //esto hay q hacerlo bien
 		return
 	}
 	if gameRoom, ok := gameRooms[key]; ok {
@@ -122,41 +116,8 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "%+v\n", err)
 		}
 
-		playerNumber := strconv.Itoa(len(gameRoom.Players) + 1)
-		player := &player.Player{
-			ID:                       uuid.New(),
-			Name:                     "Player " + playerNumber,
-			Socket:                   conn,
-			IncommingMessagesChannel: gameRoom.IncommingMessagesChannel,
-		}
-
-		//balance teams
-		playerTeam1Count := 0
-		playerTeam2Count := 0
-		for _, player := range gameRoom.Players {
-			if player.Team == 1 {
-				playerTeam1Count++
-			} else {
-				playerTeam2Count++
-			}
-		}
-		if playerTeam1Count > playerTeam2Count {
-			player.Team = 2
-		} else {
-			player.Team = 1
-		}
-
-		//set admin
-		if len(gameRoom.Players) == 0 {
-			player.Admin = true
-		}
-		mu.Lock()
-		gameRoom.Players[player.ID] = player
-		mu.Unlock()
-
-		fmt.Println("Goroutines \t", runtime.NumGoroutine())
-		wg.Done()
-		player.Read(false)
+		//Here it will wait for incomming messages
+		gameRoom.AddPlayer(conn)
 
 	}
 
@@ -186,8 +147,9 @@ func reconnect(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				fmt.Fprintf(w, "%+v\n", err)
 			}
-			player.Socket = conn
-			player.Read(true)
+
+			//Here it will wait for incomming messages
+			gameRoom.ReconnectPlayer(conn, player)
 		}
 
 	}
