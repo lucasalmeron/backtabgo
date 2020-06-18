@@ -18,12 +18,12 @@ type Message struct {
 }
 
 type Player struct {
-	ID              uuid.UUID       `json:"id"`
-	Name            string          `json:"name"`
-	Team            int             `json:"team"`
-	Admin           bool            `json:"admin"`
-	Socket          *websocket.Conn `json:"-"`
-	GameRoomChannel chan Message    `json:"-"`
+	ID                       uuid.UUID       `json:"id"`
+	Name                     string          `json:"name"`
+	Team                     int             `json:"team"`
+	Admin                    bool            `json:"admin"`
+	Socket                   *websocket.Conn `json:"-"`
+	IncommingMessagesChannel chan Message    `json:"-"`
 }
 
 func (c *Player) Write(message Message) {
@@ -40,7 +40,7 @@ func (c *Player) Read(reconnect bool) {
 		message = Message{Action: "connected", Data: "connection success", PlayerID: c.ID}
 	}
 
-	c.GameRoomChannel <- message
+	c.IncommingMessagesChannel <- message
 
 	c.Socket.SetReadDeadline(time.Now().Add(10 * time.Minute))
 
@@ -51,19 +51,19 @@ func (c *Player) Read(reconnect bool) {
 		if err != nil {
 			if ok := strings.Contains(err.Error(), "timeout"); ok {
 				message = Message{Action: "kickPlayerTimeOut", Data: "Time out", PlayerID: c.ID}
-				c.GameRoomChannel <- message
+				c.IncommingMessagesChannel <- message
 				fmt.Println("TimeOut", err)
 				break
 			}
 			if ok := strings.Contains(err.Error(), "websocket: close 1005 (no status)"); ok {
 				message = Message{Action: "playerDisconnected", Data: "Player Disconnected", PlayerID: c.ID}
-				c.GameRoomChannel <- message
+				c.IncommingMessagesChannel <- message
 				fmt.Println("Disconnected", err)
 				break
 			}
 			if ok := strings.Contains(err.Error(), "websocket: close 1001 (going away)"); ok {
 				message = Message{Action: "playerDisconnected", Data: "Player Disconnected", PlayerID: c.ID}
-				c.GameRoomChannel <- message
+				c.IncommingMessagesChannel <- message
 				fmt.Println("Disconnected", err)
 				break
 			}
@@ -79,7 +79,7 @@ func (c *Player) Read(reconnect bool) {
 		//m.Name = c.Name
 		//m.Team = c.Team
 
-		c.GameRoomChannel <- m
+		c.IncommingMessagesChannel <- m
 		//fmt.Printf("player: %+v\n", c)
 		//fmt.Printf("Got message: %#v\n", m)
 

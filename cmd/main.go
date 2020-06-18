@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"runtime"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -24,6 +25,9 @@ var addr = flag.String("addr", "127.0.0.1:3500", "address:port")
 
 var upgrader = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 var gameRooms = map[uuid.UUID]gameroom.GameRoom{}
+
+var wg sync.WaitGroup
+var mu sync.Mutex
 
 func main() {
 
@@ -100,6 +104,8 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
 
 func joinRoom(w http.ResponseWriter, r *http.Request) {
 
+	wg.Add(1)
+
 	fmt.Println("WebSocket Endpoint Hit")
 	gameRoomID := mux.Vars(r)["gameroom"]
 
@@ -118,10 +124,10 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
 
 		playerNumber := strconv.Itoa(len(gameRoom.Players) + 1)
 		player := &player.Player{
-			ID:              uuid.New(),
-			Name:            "Player " + playerNumber,
-			Socket:          conn,
-			GameRoomChannel: gameRoom.GameRoomChannel,
+			ID:                       uuid.New(),
+			Name:                     "Player " + playerNumber,
+			Socket:                   conn,
+			IncommingMessagesChannel: gameRoom.IncommingMessagesChannel,
 		}
 
 		//balance teams
@@ -144,10 +150,12 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
 		if len(gameRoom.Players) == 0 {
 			player.Admin = true
 		}
+		mu.Lock()
 		gameRoom.Players[player.ID] = player
+		mu.Unlock()
 
 		fmt.Println("Goroutines \t", runtime.NumGoroutine())
-
+		wg.Done()
 		player.Read(false)
 
 	}

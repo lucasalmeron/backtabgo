@@ -80,13 +80,15 @@ func (req *SocketRequest) getDecks() {
 func (req *SocketRequest) updateRoomOptions() {
 	if req.gameRoom.Players[req.message.PlayerID].Admin {
 		//parsing map[string] interface{} to struct
-		output := &GameRoom{}
+		output := &GameSettings{}
 		j, _ := json.Marshal(req.message.Data)
 		json.Unmarshal(j, output)
 		//parsing map[string] interface{} to struct
 
-		req.gameRoom.MaxTurnAttemps = output.MaxTurnAttemps
-		req.gameRoom.MaxPoints = output.MaxPoints
+		//req.gameRoom.Settings.TurnTime = output.TurnTime
+		req.gameRoom.Settings.TurnTime = output.TurnTime
+		req.gameRoom.Settings.MaxTurnAttemps = output.MaxTurnAttemps
+		req.gameRoom.Settings.MaxPoints = output.MaxPoints
 
 		req.message.Data = req.gameRoom
 		//broadcast Options
@@ -182,7 +184,8 @@ func (req *SocketRequest) reconnected() {
 }
 
 func (req *SocketRequest) kickPlayerTimeOut() {
-	delete(req.gameRoom.Players, req.message.PlayerID)
+	//delete(req.gameRoom.Players, req.message.PlayerID)
+	req.message.Data = req.gameRoom.Players[req.message.PlayerID]
 	for _, player := range req.gameRoom.Players {
 		player.Write(req.message)
 	}
