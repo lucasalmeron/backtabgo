@@ -47,7 +47,7 @@ func CreateGameRoom() *GameRoom {
 		Team1Score:               0,
 		Team2Score:               0,
 		TeamTurn:                 1,
-		GameStatus:               "WaitingPlayers",
+		GameStatus:               "waitingPlayers",
 		GameChannel:              make(chan interface{}),
 		IncommingMessagesChannel: make(chan player.Message),
 		Settings: &GameSettings{
@@ -133,10 +133,9 @@ func (gameRoom *GameRoom) StartGame() {
 				lastPlayerTeam2Index++
 			}
 		}
-		gameRoom.Mutex.Lock()
-		gameRoom.GameStatus = "gameInCourse"
-		gameRoom.Mutex.Unlock()
 		//set current player and index for next player
+		gameRoom.GameStatus = "gameInCourse"
+
 		//broadcast Next Player Turn
 		socketReq := SocketRequest{
 			message: player.Message{
@@ -154,9 +153,7 @@ func (gameRoom *GameRoom) StartGame() {
 		<-gameRoom.GameChannel
 		fmt.Println("end wait for take card")
 
-		gameRoom.Mutex.Lock()
 		gameRoom.GameStatus = "turnInCourse"
-		gameRoom.Mutex.Unlock()
 
 		//TIME TO SEND ATTEMPS
 		time.Sleep(time.Duration(gameRoom.Settings.TurnTime) * time.Minute)

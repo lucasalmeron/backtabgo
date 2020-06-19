@@ -20,8 +20,8 @@ func (req *SocketRequest) Route() {
 	switch req.message.Action {
 	case "startGame":
 		req.startGame()
-	case "takeCard": //nextTurn
-		req.takeCard()
+	case "playTurn": //nextTurn
+		req.playTurn()
 	case "broadcastNextPlayerTurn": //nextTurn
 		req.broadcastNextPlayerTurn()
 	case "getDecks":
@@ -49,19 +49,19 @@ func (req *SocketRequest) Route() {
 }
 
 func (req *SocketRequest) startGame() {
-	if req.gameRoom.Players[req.message.PlayerID].Admin && req.gameRoom.GameStatus == "WaitingPlayers" {
+	//check min players
+	if req.gameRoom.Players[req.message.PlayerID].Admin && req.gameRoom.GameStatus == "waitingPlayers" {
 		req.gameRoom.Wg.Add(1)
 		go req.gameRoom.StartGame()
 		req.message.Data = "Starting game..."
 		for _, player := range req.gameRoom.Players {
 			player.Write(req.message)
-
 		}
 	}
 }
 
-func (req *SocketRequest) takeCard() {
-	if req.message.PlayerID == req.gameRoom.CurrentTurn.ID {
+func (req *SocketRequest) playTurn() {
+	if req.message.PlayerID == req.gameRoom.CurrentTurn.ID && req.gameRoom.GameStatus == "gameInCourse" {
 		req.gameRoom.TakeCard()
 		req.gameRoom.GameChannel <- true
 		//retornar carta al player y game data a los demás
