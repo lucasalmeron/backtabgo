@@ -18,6 +18,12 @@ type SocketRequest struct {
 //Route classify the incomming message and call the appropiate function
 func (req *SocketRequest) Route() {
 	switch req.message.Action {
+	case "startGame":
+		req.startGame()
+	case "takeCard": //nextTurn
+		req.takeCard()
+	case "broadcastNextPlayerTurn": //nextTurn
+		req.broadcastNextPlayerTurn()
 	case "getDecks":
 		req.getDecks()
 	case "updateRoomOptions":
@@ -40,6 +46,40 @@ func (req *SocketRequest) Route() {
 		fmt.Println("doesn't match any socket endpoint")
 	}
 
+}
+
+func (req *SocketRequest) startGame() {
+	if req.gameRoom.Players[req.message.PlayerID].Admin && req.gameRoom.GameStatus == "WaitingPlayers" {
+		req.gameRoom.Wg.Add(1)
+		go req.gameRoom.StartGame()
+		req.message.Data = "Starting game..."
+		for _, player := range req.gameRoom.Players {
+			player.Write(req.message)
+
+		}
+	}
+}
+
+func (req *SocketRequest) takeCard() {
+	if req.message.PlayerID == req.gameRoom.CurrentTurn.ID {
+		req.gameRoom.TakeCard()
+		req.gameRoom.GameChannel <- true
+		//retornar carta al player y game data a los demás
+		req.message.Action = "startTurn"
+		req.message.Data = req.gameRoom.CurrentTurn
+		for _, player := range req.gameRoom.Players {
+			player.Write(req.message)
+		}
+	}
+}
+
+func (req *SocketRequest) broadcastNextPlayerTurn() {
+	req.message.Action = "nextPlayerTurn"
+	//add game data
+	req.message.Data = req.gameRoom
+	for _, player := range req.gameRoom.Players {
+		player.Write(req.message)
+	}
 }
 
 func (req *SocketRequest) getDecks() {
