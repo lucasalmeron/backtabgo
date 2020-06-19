@@ -3,6 +3,7 @@ package gameroom
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	card "github.com/lucasalmeron/backtabgo/pkg/cards"
@@ -51,9 +52,14 @@ func (req *SocketRequest) Route() {
 func (req *SocketRequest) startGame() {
 	//check min players
 	if req.gameRoom.Players[req.message.PlayerID].Admin && req.gameRoom.GameStatus == "waitingPlayers" {
-		req.gameRoom.Wg.Add(1)
-		go req.gameRoom.StartGame()
 		req.message.Data = "Starting game..."
+		for _, player := range req.gameRoom.Players {
+			player.Write(req.message)
+		}
+		req.gameRoom.Wg.Add(1)
+		time.Sleep(5 * time.Second)
+		go req.gameRoom.StartGame()
+		req.message.Data = "Game started"
 		for _, player := range req.gameRoom.Players {
 			player.Write(req.message)
 		}
