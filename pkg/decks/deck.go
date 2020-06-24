@@ -8,5 +8,5 @@ type Deck struct {
 	ID    string                `json:"id"`
 	Name  string                `json:"name"`
 	Theme string                `json:"theme"`
-	Cards map[string]*card.Card `json:"cards"`
+	Cards map[string]*card.Card `json:"-"`
 }

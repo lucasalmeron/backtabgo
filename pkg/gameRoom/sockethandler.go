@@ -5,8 +5,12 @@ import (
 	"fmt"
 	"time"
 
+	card "github.com/lucasalmeron/backtabgo/pkg/cards"
+	deck "github.com/lucasalmeron/backtabgo/pkg/decks"
 	player "github.com/lucasalmeron/backtabgo/pkg/players"
 	"github.com/lucasalmeron/backtabgo/pkg/storage"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type SocketRequest struct {
@@ -49,7 +53,7 @@ func (req *SocketRequest) Route() {
 
 func (req *SocketRequest) startGame() {
 	//check min players
-	if req.gameRoom.Players[req.message.PlayerID].Admin && req.gameRoom.GameStatus == "waitingPlayers" {
+	if req.gameRoom.Players[req.message.PlayerID].Admin && req.gameRoom.GameStatus == "waitingPlayers" && len(req.gameRoom.Settings.Decks) != 0 {
 		req.message.Data = "Starting game..."
 		for _, player := range req.gameRoom.Players {
 			player.Write(req.message)
@@ -102,21 +106,14 @@ func (req *SocketRequest) getDecks() {
 		req.message.Data = "db error"
 	}*/
 	db := storage.GetMongoDBConnection()
-	decks, err := db.FindAll("decks")
+	dbDecks, err := db.FindAll("decks")
 	if err != nil {
 		req.message.Data = "db error"
 	}
-	for _, deck := range decks {
-		delete(deck, "cards")
+
+	for _, dbDeck := range dbDecks {
+		delete(dbDeck, "cards")
 	}
-	/*decks := []deck.Deck{}
-	for _, bsonDocument := range data {
-		s := card.Card{}
-		bsonBytes, _ := bson.Marshal(bsonDocument)
-		bson.Unmarshal(bsonBytes, &s)
-		fmt.Println(s)
-		cards = append(cards, s)
-	}*/
 
 	/*data, err := db.InsertOne("cards", card.Card{
 		Word:           "Radiador",
@@ -125,22 +122,73 @@ func (req *SocketRequest) getDecks() {
 	if err != nil {
 		req.message.Data = err
 	}*/
-	req.message.Data = decks
+	req.message.Data = dbDecks
 	req.gameRoom.Players[req.message.PlayerID].Write(req.message)
 }
 
 func (req *SocketRequest) updateRoomOptions() {
 	if req.gameRoom.Players[req.message.PlayerID].Admin {
 		//parsing map[string] interface{} to struct
-		output := &GameSettings{}
+
+		var output struct {
+			MaxTurnAttemps int      `json:"maxTurnAttemps"`
+			Decks          []string `json:"decks"`
+			MaxPoints      int      `json:"maxPoints"`
+			TurnTime       int      `json:"turnTime"`
+			GameTime       int      `json:"gameTurn"`
+		}
+
 		j, _ := json.Marshal(req.message.Data)
-		json.Unmarshal(j, output)
+		json.Unmarshal(j, &output)
 		//parsing map[string] interface{} to struct
 
-		//req.gameRoom.Settings.TurnTime = output.TurnTime
+		//req.gameRoom.Settings.TurnTime = output.GameTime
 		req.gameRoom.Settings.TurnTime = output.TurnTime
 		req.gameRoom.Settings.MaxTurnAttemps = output.MaxTurnAttemps
 		req.gameRoom.Settings.MaxPoints = output.MaxPoints
+
+		groupStage := bson.D{
+			{"$lookup", bson.D{
+				{"from", "cards"},
+				{"localField", "cards"},
+				{"foreignField", "_id"},
+				{"as", "cards"},
+			}},
+		}
+		db := storage.GetMongoDBConnection()
+		dbDecks, err := db.Aggregate("decks", groupStage)
+		if err != nil {
+			req.message.Data = "db error"
+		}
+		//{"action":"updateRoomOptions","data":{"turnTime":20,"decks":["5eeead0fcc4d1e8c5f635a18"]}}
+
+		// PARSE PRIMITIVES FROM MONGO TO STRUCT
+		for _, reqDeckID := range output.Decks {
+			for _, dbDeck := range dbDecks {
+				stringID := dbDeck["_id"].(primitive.ObjectID).Hex()
+				if stringID == reqDeckID {
+					parseDeck := deck.Deck{
+						ID:    reqDeckID,
+						Name:  dbDeck["name"].(string),
+						Theme: dbDeck["theme"].(string),
+						Cards: map[string]*card.Card{},
+					}
+					for _, dbCard := range dbDeck["cards"].(primitive.A) {
+						primitiveCard := dbCard.(primitive.M)
+						parseCard := card.Card{
+							ID:   primitiveCard["_id"].(primitive.ObjectID).Hex(),
+							Word: primitiveCard["word"].(string),
+						}
+						for _, fword := range primitiveCard["forbbidenWords"].(primitive.A) {
+							parseCard.ForbbidenWords = append(parseCard.ForbbidenWords, fword.(string))
+						}
+						parseDeck.Cards[parseCard.ID] = &parseCard
+					}
+					req.gameRoom.Settings.Decks[reqDeckID] = parseDeck
+				}
+			}
+		}
+		// PARSE PRIMITIVES FROM MONGO TO STRUCT
 
 		req.message.Data = req.gameRoom
 		//broadcast Options
