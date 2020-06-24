@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
-	card "github.com/lucasalmeron/backtabgo/pkg/cards"
-	deck "github.com/lucasalmeron/backtabgo/pkg/decks"
 	player "github.com/lucasalmeron/backtabgo/pkg/players"
+	"github.com/lucasalmeron/backtabgo/pkg/storage"
 )
 
 type SocketRequest struct {
@@ -89,36 +87,44 @@ func (req *SocketRequest) broadcastNextPlayerTurn() {
 }
 
 func (req *SocketRequest) getDecks() {
-	deck1 := &deck.Deck{
-		ID:    uuid.New(),
-		Name:  "Totoro",
-		Theme: "Caca",
-		Cards: map[uuid.UUID]*card.Card{},
-	}
-	deck2 := &deck.Deck{
-		ID:    uuid.New(),
-		Name:  "Rebeca",
-		Theme: "Tolueno",
-		Cards: map[uuid.UUID]*card.Card{},
-	}
-	card1 := &card.Card{
-		ID:             uuid.New(),
-		Word:           "Caca",
-		ForbbidenWords: []string{"Culo", "Materia Fecal", "Toto", "Baño"},
-	}
-	card2 := &card.Card{
-		ID:             uuid.New(),
-		Word:           "Culo",
-		ForbbidenWords: []string{"Caca", "Materia Fecal", "Toto", "Baño"},
-	}
-	deck1.Cards[card1.ID] = card1
-	deck1.Cards[card2.ID] = card2
 
-	deck2.Cards[card1.ID] = card1
-	deck2.Cards[card2.ID] = card2
+	/*groupStage := bson.D{
+		{"$lookup", bson.D{
+			{"from", "cards"},
+			{"localField", "cards"},
+			{"foreignField", "_id"},
+			{"as", "cards"},
+		}},
+	}
+	db := storage.GetMongoDBConnection()
+	decks, err := db.Aggregate("decks", groupStage)
+	if err != nil {
+		req.message.Data = "db error"
+	}*/
+	db := storage.GetMongoDBConnection()
+	decks, err := db.FindAll("decks")
+	if err != nil {
+		req.message.Data = "db error"
+	}
+	for _, deck := range decks {
+		delete(deck, "cards")
+	}
+	/*decks := []deck.Deck{}
+	for _, bsonDocument := range data {
+		s := card.Card{}
+		bsonBytes, _ := bson.Marshal(bsonDocument)
+		bson.Unmarshal(bsonBytes, &s)
+		fmt.Println(s)
+		cards = append(cards, s)
+	}*/
 
-	decks := []deck.Deck{*deck1, *deck2}
-
+	/*data, err := db.InsertOne("cards", card.Card{
+		Word:           "Radiador",
+		ForbbidenWords: []string{"Agua", "Motor", "Regrigerante", "Enfriar", "Auto"},
+	})
+	if err != nil {
+		req.message.Data = err
+	}*/
 	req.message.Data = decks
 	req.gameRoom.Players[req.message.PlayerID].Write(req.message)
 }
@@ -197,6 +203,7 @@ func (req *SocketRequest) connected() {
 	for _, player := range req.gameRoom.Players {
 		playerList = append(playerList, *player)
 	}
+
 	req.message.Data = playerList
 	req.gameRoom.Players[req.message.PlayerID].Write(req.message)
 

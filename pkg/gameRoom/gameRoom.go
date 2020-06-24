@@ -14,11 +14,11 @@ import (
 )
 
 type GameSettings struct {
-	MaxTurnAttemps int                     `json:"maxTurnAttemps"`
-	Decks          map[uuid.UUID]deck.Deck `json:"decks"`
-	MaxPoints      int                     `json:"maxPoints"`
-	TurnTime       int                     `json:"turnTime"`
-	GameTime       int                     `json:"gameTurn"`
+	MaxTurnAttemps int                  `json:"maxTurnAttemps"`
+	Decks          map[string]deck.Deck `json:"decks"`
+	MaxPoints      int                  `json:"maxPoints"`
+	TurnTime       int                  `json:"turnTime"`
+	GameTime       int                  `json:"gameTurn"`
 }
 
 type GameRoom struct {
@@ -55,7 +55,7 @@ func CreateGameRoom() *GameRoom {
 			MaxTurnAttemps: 0,
 			TurnTime:       1,
 			GameTime:       20,
-			Decks:          map[uuid.UUID]deck.Deck{},
+			Decks:          map[string]deck.Deck{},
 		},
 		Wg:    sync.WaitGroup{},
 		Mutex: sync.Mutex{},
@@ -68,6 +68,7 @@ func (gameRoom *GameRoom) AddPlayer(conn *websocket.Conn) {
 	player := &player.Player{
 		ID:                       uuid.New(),
 		Name:                     "Player " + playerNumber,
+		Status:                   "connected",
 		Socket:                   conn,
 		IncommingMessagesChannel: gameRoom.IncommingMessagesChannel,
 	}
@@ -108,6 +109,7 @@ func (gameRoom *GameRoom) AddPlayer(conn *websocket.Conn) {
 func (gameRoom *GameRoom) ReconnectPlayer(conn *websocket.Conn, player *player.Player) {
 	gameRoom.Mutex.Lock()
 	player.Socket = conn
+	player.Status = "connected"
 	gameRoom.Mutex.Unlock()
 	player.Read(true)
 }

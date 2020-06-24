@@ -10,13 +10,13 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	gameroom "github.com/lucasalmeron/backtabgo/pkg/gameRoom"
+	storage "github.com/lucasalmeron/backtabgo/pkg/storage"
 )
 
 var addr = flag.String("addr", "127.0.0.1:3500", "address:port")
@@ -24,10 +24,12 @@ var addr = flag.String("addr", "127.0.0.1:3500", "address:port")
 var upgrader = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 var gameRooms = map[uuid.UUID]*gameroom.GameRoom{}
 
-var wg sync.WaitGroup
-var mu sync.Mutex
-
 func main() {
+
+	err := storage.NewMongoDBConnection()
+	if err != nil {
+		log.Fatal("MongoDb Connection Error: %v", err)
+	}
 
 	router := mux.NewRouter().StrictSlash(true)
 

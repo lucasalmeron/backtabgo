@@ -22,6 +22,7 @@ type Player struct {
 	Name                     string          `json:"name"`
 	Team                     int             `json:"team"`
 	Admin                    bool            `json:"admin"`
+	Status                   string          `json:"status"`
 	Socket                   *websocket.Conn `json:"-"`
 	IncommingMessagesChannel chan Message    `json:"-"`
 }
@@ -51,18 +52,21 @@ func (c *Player) Read(reconnect bool) {
 		if err != nil {
 			if ok := strings.Contains(err.Error(), "timeout"); ok {
 				message = Message{Action: "kickPlayerTimeOut", Data: "Time out", PlayerID: c.ID}
+				c.Status = "disconnected"
 				c.IncommingMessagesChannel <- message
 				fmt.Println("TimeOut", err)
 				break
 			}
 			if ok := strings.Contains(err.Error(), "websocket: close 1005 (no status)"); ok {
 				message = Message{Action: "playerDisconnected", Data: "Player Disconnected", PlayerID: c.ID}
+				c.Status = "disconnected"
 				c.IncommingMessagesChannel <- message
 				fmt.Println("Disconnected", err)
 				break
 			}
 			if ok := strings.Contains(err.Error(), "websocket: close 1001 (going away)"); ok {
 				message = Message{Action: "playerDisconnected", Data: "Player Disconnected", PlayerID: c.ID}
+				c.Status = "disconnected"
 				c.IncommingMessagesChannel <- message
 				fmt.Println("Disconnected", err)
 				break
