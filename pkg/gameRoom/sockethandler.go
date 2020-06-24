@@ -247,12 +247,12 @@ func (req *SocketRequest) getPlayerList() {
 
 func (req *SocketRequest) connected() {
 	//send PlayerList to new Player
-	playerList := make([]player.Player, 0) //review declaration
+	/*playerList := make([]player.Player, 0) //review declaration
 	for _, player := range req.gameRoom.Players {
 		playerList = append(playerList, *player)
-	}
+	}*/
 
-	req.message.Data = playerList
+	req.message.Data = req.gameRoom
 	req.gameRoom.Players[req.message.PlayerID].Write(req.message)
 
 	//broadcast new player
@@ -267,11 +267,12 @@ func (req *SocketRequest) connected() {
 
 func (req *SocketRequest) reconnected() {
 	//send PlayerList to new Player
-	playerList := make([]player.Player, 0)
+	/*playerList := make([]player.Player, 0)
 	for _, player := range req.gameRoom.Players {
 		playerList = append(playerList, *player)
-	}
-	req.message.Data = playerList
+	}*/
+
+	req.message.Data = req.gameRoom
 	req.gameRoom.Players[req.message.PlayerID].Write(req.message)
 
 	//broadcast reconnected player
