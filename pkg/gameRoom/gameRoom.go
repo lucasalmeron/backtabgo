@@ -182,7 +182,7 @@ func mapRandomKeyGet(mapI interface{}) interface{} {
 }
 
 func (gameRoom *GameRoom) TakeCard() {
-	//{"action":"updateRoomOptions","data":{"turnTime":1,"decks":["5eeead0fcc4d1e8c5f635a18"]}}
+	//{"action":"updateRoomOptions","data":{"turnTime":1,"maxPoints":50,"decks":["5eeead0fcc4d1e8c5f635a18"]}}
 	var randKeyDeck string
 	var randKeyCard string
 	for {

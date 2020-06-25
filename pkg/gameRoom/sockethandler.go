@@ -63,6 +63,7 @@ func (req *SocketRequest) startGame() {
 		req.gameRoom.Wg.Add(1)
 		time.Sleep(5 * time.Second)
 		go req.gameRoom.StartGame()
+		req.message.Action = "gameStarted"
 		req.message.Data = "Game started"
 		for _, player := range req.gameRoom.Players {
 			player.Write(req.message)
