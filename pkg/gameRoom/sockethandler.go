@@ -23,10 +23,12 @@ func (req *SocketRequest) Route() {
 	switch req.message.Action {
 	case "startGame":
 		req.startGame()
-	case "playTurn": //nextTurn
+	case "playTurn":
 		req.playTurn()
 	case "broadcastNextPlayerTurn": //nextTurn
 		req.broadcastNextPlayerTurn()
+	case "submitAttemp":
+		req.submitAttemp()
 	case "getDecks":
 		req.getDecks()
 	case "updateRoomOptions":
@@ -70,14 +72,18 @@ func (req *SocketRequest) startGame() {
 
 func (req *SocketRequest) playTurn() {
 	if req.message.PlayerID == req.gameRoom.CurrentTurn.ID && req.gameRoom.GameStatus == "gameInCourse" {
-		req.gameRoom.TakeCard()
-		req.gameRoom.GameChannel <- true
-		//retornar carta al player y game data a los demás
+		req.gameRoom.PlayTurn()
+
+		//broadcast gamestatus and give a new card to player
 		req.message.Action = "startTurn"
-		req.message.Data = req.gameRoom.CurrentTurn
+		req.message.Data = req.gameRoom
 		for _, player := range req.gameRoom.Players {
 			player.Write(req.message)
 		}
+
+		req.message.Action = "yourCard"
+		req.message.Data = req.gameRoom.CurrentCard
+		req.gameRoom.Players[req.gameRoom.CurrentTurn.ID].Write(req.message)
 	}
 }
 
@@ -88,6 +94,32 @@ func (req *SocketRequest) broadcastNextPlayerTurn() {
 	for _, player := range req.gameRoom.Players {
 		player.Write(req.message)
 	}
+}
+
+func (req *SocketRequest) submitAttemp() {
+	if req.gameRoom.GameStatus == "turnInCourse" && req.gameRoom.CurrentTurn.Team == req.gameRoom.Players[req.message.PlayerID].Team {
+		if req.gameRoom.SubmitPlayerAttemp(req.message.Data.(string)) {
+			req.message.Data = "Success attemp"
+			for _, player := range req.gameRoom.Players {
+				player.Write(req.message)
+			}
+
+			req.gameRoom.TakeCard()
+			req.message.Action = "yourCard"
+			req.message.Data = req.gameRoom.CurrentCard
+			req.gameRoom.Players[req.gameRoom.CurrentTurn.ID].Write(req.message)
+
+			for _, player := range req.gameRoom.Players {
+				player.Write(req.message)
+			}
+		} else {
+			req.message.Data = "Failed attemp"
+			for _, player := range req.gameRoom.Players {
+				player.Write(req.message)
+			}
+		}
+	}
+
 }
 
 func (req *SocketRequest) getDecks() {
@@ -112,6 +144,7 @@ func (req *SocketRequest) getDecks() {
 	}
 
 	for _, dbDeck := range dbDecks {
+		dbDeck["CardsLength"] = len(dbDeck["cards"].(primitive.A))
 		delete(dbDeck, "cards")
 	}
 
@@ -142,7 +175,7 @@ func (req *SocketRequest) updateRoomOptions() {
 		json.Unmarshal(j, &output)
 		//parsing map[string] interface{} to struct
 
-		//req.gameRoom.Settings.TurnTime = output.GameTime
+		//req.gameRoom.Settings.GameTime = output.GameTime
 		req.gameRoom.Settings.TurnTime = output.TurnTime
 		req.gameRoom.Settings.MaxTurnAttemps = output.MaxTurnAttemps
 		req.gameRoom.Settings.MaxPoints = output.MaxPoints
@@ -163,6 +196,7 @@ func (req *SocketRequest) updateRoomOptions() {
 		//{"action":"updateRoomOptions","data":{"turnTime":20,"decks":["5eeead0fcc4d1e8c5f635a18"]}}
 
 		// PARSE PRIMITIVES FROM MONGO TO STRUCT
+		totalCards := 0
 		for _, reqDeckID := range output.Decks {
 			for _, dbDeck := range dbDecks {
 				stringID := dbDeck["_id"].(primitive.ObjectID).Hex()
@@ -184,10 +218,13 @@ func (req *SocketRequest) updateRoomOptions() {
 						}
 						parseDeck.Cards[parseCard.ID] = &parseCard
 					}
-					req.gameRoom.Settings.Decks[reqDeckID] = parseDeck
+					parseDeck.CardsLength = len(parseDeck.Cards)
+					totalCards += len(parseDeck.Cards)
+					req.gameRoom.Settings.Decks[reqDeckID] = &parseDeck
 				}
 			}
 		}
+		req.gameRoom.TotalCards = totalCards
 		// PARSE PRIMITIVES FROM MONGO TO STRUCT
 
 		req.message.Data = req.gameRoom

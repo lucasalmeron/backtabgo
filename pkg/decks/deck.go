@@ -5,8 +5,9 @@ import (
 )
 
 type Deck struct {
-	ID    string                `json:"id"`
-	Name  string                `json:"name"`
-	Theme string                `json:"theme"`
-	Cards map[string]*card.Card `json:"-"`
+	ID          string                `json:"id"`
+	Name        string                `json:"name"`
+	Theme       string                `json:"theme"`
+	CardsLength int                   `json:"cardsLength"`
+	Cards       map[string]*card.Card `json:"-"`
 }
