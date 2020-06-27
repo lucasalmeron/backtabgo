@@ -110,9 +110,19 @@ func (req *SocketRequest) broadcastNextPlayerTurn() {
 
 func (req *SocketRequest) submitAttemp() {
 	if req.gameRoom.GameStatus == "turnInCourse" && req.gameRoom.CurrentTurn.Team == req.gameRoom.Players[req.message.PlayerID].Team {
+		attempMessage := struct {
+			Player        *player.Player
+			SuccessAttemp bool
+			Attemp        string
+		}{
+			Player: req.gameRoom.Players[req.message.PlayerID],
+			Attemp: req.message.Data.(string),
+		}
 		if req.gameRoom.SubmitPlayerAttemp(req.message.Data.(string)) {
 			//player boolean word
-			req.message.Data = "Success attemp"
+
+			attempMessage.SuccessAttemp = true
+			req.message.Data = attempMessage
 			for _, player := range req.gameRoom.Players {
 				player.Write(req.message)
 			}
@@ -135,12 +145,9 @@ func (req *SocketRequest) submitAttemp() {
 					player.Write(req.message)
 				}
 			}
-
-			for _, player := range req.gameRoom.Players {
-				player.Write(req.message)
-			}
 		} else {
-			req.message.Data = "Failed attemp"
+			attempMessage.SuccessAttemp = false
+			req.message.Data = attempMessage
 			for _, player := range req.gameRoom.Players {
 				player.Write(req.message)
 			}
