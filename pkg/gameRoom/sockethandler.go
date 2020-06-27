@@ -83,6 +83,19 @@ func (req *SocketRequest) playTurn() {
 		req.message.Action = "yourCard"
 		req.message.Data = req.gameRoom.CurrentCard
 		req.gameRoom.Players[req.gameRoom.CurrentTurn.ID].Write(req.message)
+
+		//send currentCard to controller players
+		req.message.Action = "currentCard"
+		req.message.Data = req.gameRoom.CurrentCard
+		if req.gameRoom.Players[req.gameRoom.CurrentTurn.ID].Team == 1 {
+			for _, player := range req.gameRoom.PlayersTeam2 {
+				player.Write(req.message)
+			}
+		} else {
+			for _, player := range req.gameRoom.PlayersTeam1 {
+				player.Write(req.message)
+			}
+		}
 	}
 }
 
@@ -98,15 +111,30 @@ func (req *SocketRequest) broadcastNextPlayerTurn() {
 func (req *SocketRequest) submitAttemp() {
 	if req.gameRoom.GameStatus == "turnInCourse" && req.gameRoom.CurrentTurn.Team == req.gameRoom.Players[req.message.PlayerID].Team {
 		if req.gameRoom.SubmitPlayerAttemp(req.message.Data.(string)) {
+			//player boolean word
 			req.message.Data = "Success attemp"
 			for _, player := range req.gameRoom.Players {
 				player.Write(req.message)
 			}
 
+			//send card to controller players
 			req.gameRoom.TakeCard()
 			req.message.Action = "yourCard"
 			req.message.Data = req.gameRoom.CurrentCard
 			req.gameRoom.Players[req.gameRoom.CurrentTurn.ID].Write(req.message)
+
+			//send currentCard to controller players
+			req.message.Action = "currentCard"
+			req.message.Data = req.gameRoom.CurrentCard
+			if req.gameRoom.Players[req.gameRoom.CurrentTurn.ID].Team == 1 {
+				for _, player := range req.gameRoom.PlayersTeam2 {
+					player.Write(req.message)
+				}
+			} else {
+				for _, player := range req.gameRoom.PlayersTeam1 {
+					player.Write(req.message)
+				}
+			}
 
 			for _, player := range req.gameRoom.Players {
 				player.Write(req.message)
@@ -308,12 +336,7 @@ func (req *SocketRequest) connected() {
 }
 
 func (req *SocketRequest) reconnected() {
-	//send PlayerList to new Player
-	/*playerList := make([]player.Player, 0)
-	for _, player := range req.gameRoom.Players {
-		playerList = append(playerList, *player)
-	}*/
-
+	//send reconected to player
 	req.message.Data = req.gameRoom
 	req.gameRoom.Players[req.message.PlayerID].Write(req.message)
 
@@ -325,6 +348,22 @@ func (req *SocketRequest) reconnected() {
 			player.Write(req.message)
 		}
 	}
+
+	if req.gameRoom.GameStatus == "turnInCourse" {
+		if req.gameRoom.CurrentTurn.ID == req.message.PlayerID {
+			req.message.Action = "yourCard"
+			req.message.Data = req.gameRoom.CurrentCard
+			req.gameRoom.Players[req.gameRoom.CurrentTurn.ID].Write(req.message)
+		} else {
+			if req.gameRoom.CurrentTurn.Team != req.gameRoom.Players[req.message.PlayerID].Team {
+				req.message.Action = "currentCard"
+				req.message.Data = req.gameRoom.CurrentCard
+				req.gameRoom.Players[req.message.PlayerID].Write(req.message)
+			}
+		}
+
+	}
+
 }
 
 func (req *SocketRequest) kickPlayerTimeOut() {
