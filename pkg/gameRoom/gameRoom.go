@@ -126,7 +126,7 @@ func (gameRoom *GameRoom) StartGame() {
 		//set current player and index for next player
 		if gameRoom.TeamTurn == 1 {
 			gameRoom.CurrentTurn = gameRoom.PlayersTeam1[lastPlayerTeam1Index]
-			gameRoom.TeamTurn = 1
+			gameRoom.TeamTurn = 2
 			if len(gameRoom.PlayersTeam1)-1 == lastPlayerTeam1Index {
 				lastPlayerTeam1Index = 0
 			} else {
@@ -134,7 +134,7 @@ func (gameRoom *GameRoom) StartGame() {
 			}
 		} else {
 			gameRoom.CurrentTurn = gameRoom.PlayersTeam2[lastPlayerTeam2Index]
-			gameRoom.TeamTurn = 2
+			gameRoom.TeamTurn = 1
 			if len(gameRoom.PlayersTeam2)-1 == lastPlayerTeam2Index {
 				lastPlayerTeam2Index = 0
 			} else {
