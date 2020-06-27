@@ -3,7 +3,6 @@ package gameroom
 import (
 	"encoding/json"
 	"fmt"
-	"time"
 
 	card "github.com/lucasalmeron/backtabgo/pkg/cards"
 	deck "github.com/lucasalmeron/backtabgo/pkg/decks"
@@ -61,7 +60,6 @@ func (req *SocketRequest) startGame() {
 			player.Write(req.message)
 		}
 		req.gameRoom.Wg.Add(1)
-		time.Sleep(5 * time.Second)
 		go req.gameRoom.StartGame()
 		req.message.Action = "gameStarted"
 		req.message.Data = "Game started"
