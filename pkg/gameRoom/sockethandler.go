@@ -175,9 +175,15 @@ func (req *SocketRequest) updateRoomOptions() {
 		//parsing map[string] interface{} to struct
 
 		//req.gameRoom.Settings.GameTime = output.GameTime
-		req.gameRoom.Settings.TurnTime = output.TurnTime
-		req.gameRoom.Settings.MaxTurnAttemps = output.MaxTurnAttemps
-		req.gameRoom.Settings.MaxPoints = output.MaxPoints
+		if output.TurnTime > 0 {
+			req.gameRoom.Settings.TurnTime = output.TurnTime
+		}
+		if output.MaxTurnAttemps > 5 {
+			req.gameRoom.Settings.MaxTurnAttemps = output.MaxTurnAttemps
+		}
+		if output.MaxPoints > 50 {
+			req.gameRoom.Settings.MaxPoints = output.MaxPoints
+		}
 
 		groupStage := bson.D{
 			{"$lookup", bson.D{
