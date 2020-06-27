@@ -18,9 +18,10 @@ import (
 
 type GameSettings struct {
 	MaxTurnAttemps int                   `json:"maxTurnAttemps"`
-	Decks          map[string]Che respóndeme algo
-	22:40
-	Que tengo que saber como hago           `json:"gameTurn"`
+	Decks          map[string]*deck.Deck `json:"decks"`
+	MaxPoints      int                   `json:"maxPoints"`
+	TurnTime       int                   `json:"turnTime"`
+	GameTime       int                   `json:"gameTurn"`
 }
 
 type GameRoom struct {
