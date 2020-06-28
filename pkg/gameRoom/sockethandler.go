@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
 	card "github.com/lucasalmeron/backtabgo/pkg/cards"
 	deck "github.com/lucasalmeron/backtabgo/pkg/decks"
 	player "github.com/lucasalmeron/backtabgo/pkg/players"
@@ -46,7 +47,7 @@ func (req *SocketRequest) Route() {
 	case "reconnected":
 		req.reconnected()
 	case "kickPlayer":
-		req.kickPlayerTimeOut()
+		req.kickPlayer()
 	case "kickPlayerTimeOut":
 		req.kickPlayerTimeOut()
 	case "playerDisconnected":
@@ -467,6 +468,18 @@ func (req *SocketRequest) reconnected() {
 			}
 		}
 
+	}
+
+}
+
+func (req *SocketRequest) kickPlayer() {
+	if req.gameRoom.Players[req.message.PlayerID].Admin {
+		req.message.Action = "playerKicked"
+		req.message.Data = req.gameRoom.Players[req.message.Data.(uuid.UUID)]
+		delete(req.gameRoom.Players, req.message.Data.(uuid.UUID))
+		for _, player := range req.gameRoom.Players {
+			player.Write(req.message)
+		}
 	}
 
 }
