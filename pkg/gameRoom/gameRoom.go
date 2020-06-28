@@ -204,10 +204,11 @@ func (gameRoom *GameRoom) TakeCard() {
 	delete(gameRoom.Settings.Decks[randKeyDeck].Cards, randKeyCard)
 	gameRoom.Settings.Decks[randKeyDeck].CardsLength--
 	gameRoom.CurrentCard = card
-	for key, word := range card.ForbbidenWords {
-		gameRoom.TurnMistakes[key] = &TurnMistakes{
+	gameRoom.TurnMistakes = nil
+	for _, word := range card.ForbbidenWords {
+		gameRoom.TurnMistakes = append(gameRoom.TurnMistakes, &TurnMistakes{
 			Word: word,
-		}
+		})
 	}
 
 }
