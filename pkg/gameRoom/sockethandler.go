@@ -206,8 +206,7 @@ func (req *SocketRequest) submitMistake() {
 					lengthPlayers = len(req.gameRoom.PlayersTeam2)
 				}
 
-				lengthMistakePlayers := len(mistake.Players)
-				mistake.Players[lengthMistakePlayers] = req.gameRoom.Players[req.message.PlayerID]
+				mistake.Players = append(mistake.Players, req.gameRoom.Players[req.message.PlayerID])
 
 				if len(mistake.Players) > (lengthPlayers / 2) {
 					req.message.Action = "playerMistake"

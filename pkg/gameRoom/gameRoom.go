@@ -205,6 +205,9 @@ func (gameRoom *GameRoom) TakeCard() {
 	gameRoom.Settings.Decks[randKeyDeck].CardsLength--
 	gameRoom.CurrentCard = card
 	gameRoom.TurnMistakes = nil
+	gameRoom.TurnMistakes = append(gameRoom.TurnMistakes, &TurnMistakes{
+		Word: card.Word,
+	})
 	for _, word := range card.ForbbidenWords {
 		gameRoom.TurnMistakes = append(gameRoom.TurnMistakes, &TurnMistakes{
 			Word: word,
