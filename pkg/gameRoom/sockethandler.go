@@ -3,6 +3,7 @@ package gameroom
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	card "github.com/lucasalmeron/backtabgo/pkg/cards"
 	deck "github.com/lucasalmeron/backtabgo/pkg/decks"
@@ -195,7 +196,8 @@ func (req *SocketRequest) submitAttemp() {
 func (req *SocketRequest) submitMistake() {
 	if req.gameRoom.GameStatus == "turnInCourse" && req.gameRoom.CurrentTurn.Team != req.gameRoom.Players[req.message.PlayerID].Team {
 		for _, mistake := range req.gameRoom.TurnMistakes {
-			if mistake.Word == req.message.Data {
+
+			if strings.ToUpper(mistake.Word) == strings.ToUpper(req.message.Data.(string)) {
 
 				var lengthPlayers int
 				if req.gameRoom.Players[req.message.PlayerID].Team == 1 {
