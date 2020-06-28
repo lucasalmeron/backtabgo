@@ -2,27 +2,16 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
-	"runtime"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/gorilla/mux"
-	"github.com/gorilla/websocket"
-	gameroom "github.com/lucasalmeron/backtabgo/pkg/gameRoom"
+	httphandler "github.com/lucasalmeron/backtabgo/internal/http"
 	storage "github.com/lucasalmeron/backtabgo/pkg/storage"
 )
-
-var addr = flag.String("addr", "127.0.0.1:3500", "address:port")
-
-var upgrader = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
-var gameRooms = map[uuid.UUID]*gameroom.GameRoom{}
 
 func main() {
 
@@ -31,15 +20,17 @@ func main() {
 		log.Fatal("MongoDb Connection Error: %v", err)
 	}
 
-	router := mux.NewRouter().StrictSlash(true)
+	var addr string
 
-	router.Path("/createroom").HandlerFunc(createRoom).Methods("GET", "OPTIONS")
-	router.Path("/joinroom/{gameroom}").HandlerFunc(joinRoom)
-	router.Path("/reconnectroom/{gameroom}/{playerid}").HandlerFunc(reconnect)
+	if os.Getenv("PORT") != "" {
+		addr = ":" + os.Getenv("PORT")
+	} else {
+		addr = "127.0.0.1:3500"
+	}
 
 	srv := &http.Server{
-		Handler: router,
-		Addr:    *addr,
+		Handler: httphandler.InitHttpHandler(),
+		Addr:    addr,
 		// Good practice: enforce timeouts for servers you create!
 		WriteTimeout:   15 * time.Second,
 		ReadTimeout:    15 * time.Second,
@@ -51,7 +42,7 @@ func main() {
 	// Lanzamos goroutine para esperar señal y llamar Shutdown.
 	go waitForShutdown(conxCerradas, srv)
 
-	fmt.Printf("Server started on %s. CTRL+C for shutdown.\n", *addr)
+	fmt.Printf("Server started on %s. CTRL+C for shutdown.\n", addr)
 	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 		log.Fatal("ListenAndServe Error: %v", err)
 	}
@@ -81,78 +72,4 @@ func waitForShutdown(conxCerradas chan struct{}, srv *http.Server) {
 
 	// Cerramos el canal, señalando conexiones ya cerradas.
 	close(conxCerradas)
-}
-
-func createRoom(w http.ResponseWriter, r *http.Request) {
-
-	gameRoom := gameroom.CreateGameRoom()
-	gameRooms[gameRoom.ID] = gameRoom
-	//fmt.Println(gameRooms)
-
-	go gameRoom.StartListen()
-	fmt.Println("Goroutines \t", runtime.NumGoroutine())
-
-	var response struct {
-		GameRoomID string `json:"gameRoomID"`
-	}
-	response.GameRoomID = gameRoom.ID.String()
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	json.NewEncoder(w).Encode(response)
-}
-
-func joinRoom(w http.ResponseWriter, r *http.Request) {
-
-	fmt.Println("WebSocket Endpoint Hit")
-	gameRoomID := mux.Vars(r)["gameroom"]
-
-	key, err := uuid.Parse(gameRoomID)
-	if err != nil {
-		fmt.Fprintf(w, "%+v\n", err)
-		return
-	}
-	if gameRoom, ok := gameRooms[key]; ok {
-		conn, err := upgrader.Upgrade(w, r, nil)
-		if err != nil {
-			fmt.Fprintf(w, "%+v\n", err)
-		}
-
-		//Here it will wait for incomming messages
-		gameRoom.AddPlayer(conn)
-
-	}
-
-}
-
-func reconnect(w http.ResponseWriter, r *http.Request) {
-
-	fmt.Println("WebSocket Reconnect")
-	gameRoomID := mux.Vars(r)["gameroom"]
-	playerID := mux.Vars(r)["playerid"]
-
-	roomKey, err := uuid.Parse(gameRoomID)
-	if err != nil {
-		fmt.Fprintf(w, "%+v\n", err)
-		return
-	}
-	playerKey, err := uuid.Parse(playerID)
-	if err != nil {
-		fmt.Fprintf(w, "%+v\n", err)
-		return
-	}
-
-	if gameRoom, ok := gameRooms[roomKey]; ok {
-
-		if player, ok := gameRoom.Players[playerKey]; ok {
-			conn, err := upgrader.Upgrade(w, r, nil)
-			if err != nil {
-				fmt.Fprintf(w, "%+v\n", err)
-			}
-
-			//Here it will wait for incomming messages
-			gameRoom.ReconnectPlayer(conn, player)
-		}
-
-	}
 }

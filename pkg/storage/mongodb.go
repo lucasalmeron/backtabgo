@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -26,10 +27,22 @@ func GetMongoDBConnection() *MongoDB {
 }
 
 func (mongoDB *MongoDB) connect() error {
-	host := "localhost"
-	port := 27017
 
-	clientOpts := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s:%d", host, port))
+	var mongoURI string
+	var mongoDataBase string
+	if os.Getenv("MONGODB_URI") != "" {
+		mongoURI = os.Getenv("MONGODB_URI")
+	} else {
+		mongoURI = fmt.Sprintf("mongodb://localhost:27017")
+	}
+
+	if os.Getenv("MONGODB_URI") != "" {
+		mongoDataBase = os.Getenv("MONGODB_URI")
+	} else {
+		mongoDataBase = "taboogame"
+	}
+
+	clientOpts := options.Client().ApplyURI(mongoURI)
 	client, err := mongo.Connect(context.TODO(), clientOpts)
 	if err != nil {
 		log.Fatal(err)
@@ -42,7 +55,8 @@ func (mongoDB *MongoDB) connect() error {
 		log.Fatal(err)
 		return err
 	}
-	mongoDB.connection = client.Database("taboogame")
+
+	mongoDB.connection = client.Database(mongoDataBase)
 	log.Println("MongoDB connection success")
 	return nil
 }

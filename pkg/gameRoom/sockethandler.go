@@ -45,6 +45,8 @@ func (req *SocketRequest) Route() {
 		req.connected()
 	case "reconnected":
 		req.reconnected()
+	case "kickPlayer":
+		req.kickPlayerTimeOut()
 	case "kickPlayerTimeOut":
 		req.kickPlayerTimeOut()
 	case "playerDisconnected":
@@ -58,8 +60,7 @@ func (req *SocketRequest) Route() {
 }
 
 func (req *SocketRequest) startGame() {
-	//check min players
-	if req.gameRoom.Players[req.message.PlayerID].Admin && req.gameRoom.GameStatus == "waitingPlayers" && len(req.gameRoom.Settings.Decks) != 0 {
+	if req.gameRoom.Players[req.message.PlayerID].Admin && req.gameRoom.GameStatus == "waitingPlayers" && len(req.gameRoom.Settings.Decks) != 0 && len(req.gameRoom.Players) >= 4 {
 		req.message.Data = "Starting game..."
 		for _, player := range req.gameRoom.Players {
 			player.Write(req.message)
@@ -106,7 +107,6 @@ func (req *SocketRequest) playTurn() {
 
 func (req *SocketRequest) broadcastNextPlayerTurn() {
 	req.message.Action = "nextPlayerTurn"
-	//add game data
 	req.message.Data = req.gameRoom
 	for _, player := range req.gameRoom.Players {
 		player.Write(req.message)
