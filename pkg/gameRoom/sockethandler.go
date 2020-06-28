@@ -196,9 +196,9 @@ func (req *SocketRequest) submitAttemp() {
 func (req *SocketRequest) submitMistake() {
 	if req.gameRoom.GameStatus == "turnInCourse" && req.gameRoom.CurrentTurn.Team != req.gameRoom.Players[req.message.PlayerID].Team {
 		for _, mistake := range req.gameRoom.TurnMistakes {
-
+			fmt.Println(mistake)
 			if strings.ToUpper(mistake.Word) == strings.ToUpper(req.message.Data.(string)) {
-
+				fmt.Println("entro")
 				var lengthPlayers int
 				if req.gameRoom.Players[req.message.PlayerID].Team == 1 {
 					lengthPlayers = len(req.gameRoom.PlayersTeam1)
@@ -207,7 +207,6 @@ func (req *SocketRequest) submitMistake() {
 				}
 
 				mistake.Players = append(mistake.Players, req.gameRoom.Players[req.message.PlayerID])
-
 				if len(mistake.Players) > (lengthPlayers / 2) {
 					req.message.Action = "playerMistake"
 					for _, player := range req.gameRoom.Players {
@@ -237,13 +236,17 @@ func (req *SocketRequest) submitMistake() {
 							player.Write(req.message)
 						}
 					}
-
+					break
 				} else {
 					req.message.Action = "mistakeSubmitted"
+					fmt.Println("asdasd")
 					req.message.Data = req.gameRoom.TurnMistakes
+					fmt.Println("asdasd2")
 					for _, player := range req.gameRoom.Players {
 						player.Write(req.message)
 					}
+					fmt.Println("asdasd3")
+					break
 				}
 			}
 		}
