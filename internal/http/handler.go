@@ -17,28 +17,28 @@ import (
 var upgrader = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 var gameRooms = map[uuid.UUID]*gameroom.GameRoom{}
 
-type HttpHandler struct {
+type httpHandler struct {
 	router *mux.Router
 }
 
 func InitHttpHandler() *mux.Router {
-	httpRouter := &HttpHandler{
+	httpRouter := &httpHandler{
 		router: mux.NewRouter().StrictSlash(true),
 	}
 	httpRouter.router.Path("/createroom").HandlerFunc(createRoom).Methods("GET", "OPTIONS")
 	httpRouter.router.Path("/joinroom/{gameroom}").HandlerFunc(joinRoom)
 	httpRouter.router.Path("/reconnectroom/{gameroom}/{playerid}").HandlerFunc(reconnect)
-	spa := SpaHandler{StaticPath: "static", IndexPath: "index.html"}
+	spa := spaHandler{StaticPath: "static", IndexPath: "index.html"}
 	httpRouter.router.PathPrefix("/").Handler(spa)
 	return httpRouter.router
 }
 
-type SpaHandler struct {
+type spaHandler struct {
 	StaticPath string
 	IndexPath  string
 }
 
-func (h SpaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path, err := filepath.Abs(r.URL.Path)
 	if err != nil {
 
