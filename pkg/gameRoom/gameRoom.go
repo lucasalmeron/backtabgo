@@ -16,6 +16,11 @@ import (
 	player "github.com/lucasalmeron/backtabgo/pkg/players"
 )
 
+type TurnMistakes struct {
+	Word    string           `json:"word"`
+	Players []*player.Player `json:"players"`
+}
+
 type GameSettings struct {
 	MaxTurnAttemps int                   `json:"maxTurnAttemps"`
 	Decks          map[string]*deck.Deck `json:"decks"`
@@ -32,6 +37,7 @@ type GameRoom struct {
 	PlayersTeam1             []*player.Player             `json:"team1"`
 	PlayersTeam2             []*player.Player             `json:"team2"`
 	TeamTurn                 int                          `json:"teamTurn"`
+	TurnMistakes             []*TurnMistakes              `json:"teamMistakes"`
 	TotalCards               int                          `json:"totalCards"`
 	CurrentTurn              *player.Player               `json:"currentTurn"`
 	CurrentCard              *card.Card                   `json:"-"`
@@ -198,6 +204,11 @@ func (gameRoom *GameRoom) TakeCard() {
 	delete(gameRoom.Settings.Decks[randKeyDeck].Cards, randKeyCard)
 	gameRoom.Settings.Decks[randKeyDeck].CardsLength--
 	gameRoom.CurrentCard = card
+	for key, word := range card.ForbbidenWords {
+		gameRoom.TurnMistakes[key] = &TurnMistakes{
+			Word: word,
+		}
+	}
 
 }
 

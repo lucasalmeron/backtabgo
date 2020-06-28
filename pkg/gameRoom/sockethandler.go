@@ -194,7 +194,58 @@ func (req *SocketRequest) submitAttemp() {
 
 func (req *SocketRequest) submitMistake() {
 	if req.gameRoom.GameStatus == "turnInCourse" && req.gameRoom.CurrentTurn.Team != req.gameRoom.Players[req.message.PlayerID].Team {
+		for _, mistake := range req.gameRoom.TurnMistakes {
+			if mistake.Word == req.message.Data {
 
+				var lengthPlayers int
+				if req.gameRoom.Players[req.message.PlayerID].Team == 1 {
+					lengthPlayers = len(req.gameRoom.PlayersTeam1)
+				} else {
+					lengthPlayers = len(req.gameRoom.PlayersTeam2)
+				}
+
+				lengthMistakePlayers := len(mistake.Players)
+				mistake.Players[lengthMistakePlayers] = req.gameRoom.Players[req.message.PlayerID]
+
+				if len(mistake.Players) > (lengthPlayers / 2) {
+					req.message.Action = "playerMistake"
+					for _, player := range req.gameRoom.Players {
+						player.Write(req.message)
+					}
+					if req.gameRoom.Players[req.gameRoom.CurrentTurn.ID].Team == 1 {
+						req.gameRoom.Team1Score--
+					} else {
+						req.gameRoom.Team2Score--
+					}
+
+					//send card to controller players
+					req.gameRoom.TakeCard()
+					req.message.Action = "yourCard"
+					req.message.Data = req.gameRoom.CurrentCard
+					req.gameRoom.Players[req.gameRoom.CurrentTurn.ID].Write(req.message)
+
+					//send currentCard to controller players
+					req.message.Action = "currentCard"
+					req.message.Data = req.gameRoom.CurrentCard
+					if req.gameRoom.Players[req.gameRoom.CurrentTurn.ID].Team == 1 {
+						for _, player := range req.gameRoom.PlayersTeam2 {
+							player.Write(req.message)
+						}
+					} else {
+						for _, player := range req.gameRoom.PlayersTeam1 {
+							player.Write(req.message)
+						}
+					}
+
+				} else {
+					req.message.Action = "mistakeSubmitted"
+					req.message.Data = req.gameRoom.TurnMistakes
+					for _, player := range req.gameRoom.Players {
+						player.Write(req.message)
+					}
+				}
+			}
+		}
 	}
 }
 
