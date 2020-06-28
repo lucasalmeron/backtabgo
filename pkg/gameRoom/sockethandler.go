@@ -206,7 +206,7 @@ func (req *SocketRequest) submitMistake() {
 				}
 				for _, player := range mistake.Players {
 					if player.ID == req.message.PlayerID {
-						break
+						return
 					}
 				}
 
