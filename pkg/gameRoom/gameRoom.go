@@ -175,8 +175,18 @@ func (gameRoom *GameRoom) StartGame() {
 
 		fmt.Println("END TURN")
 
-		//add empty deck
 		if gameRoom.Settings.MaxPoints <= gameRoom.Team1Score || gameRoom.Settings.MaxPoints <= gameRoom.Team2Score || gameRoom.TotalCards == 0 {
+
+			gameRoom.GameStatus = "gameEnded"
+
+			socketReq = SocketRequest{
+				message: player.Message{
+					Action: "gameEnded",
+					Data:   gameRoom,
+				},
+				gameRoom: gameRoom,
+			}
+			defer gameRoom.Wg.Done()
 			break
 		}
 	}

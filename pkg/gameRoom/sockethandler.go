@@ -54,6 +54,8 @@ func (req *SocketRequest) Route() {
 		req.playerDisconnected()
 	case "changeName":
 		req.changeName()
+	case "gameEnded":
+		req.gameEnded()
 	default:
 		fmt.Println("doesn't match any socket endpoint")
 	}
@@ -504,6 +506,12 @@ func (req *SocketRequest) playerDisconnected() {
 func (req *SocketRequest) changeName() {
 	req.gameRoom.Players[req.message.PlayerID].Name = fmt.Sprintf("%v", req.message.Data)
 	req.message.Data = req.gameRoom.Players[req.message.PlayerID]
+	for _, player := range req.gameRoom.Players {
+		player.Write(req.message)
+	}
+}
+
+func (req *SocketRequest) gameEnded() {
 	for _, player := range req.gameRoom.Players {
 		player.Write(req.message)
 	}
