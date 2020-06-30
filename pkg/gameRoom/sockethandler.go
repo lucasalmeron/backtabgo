@@ -355,7 +355,7 @@ func (req *SocketRequest) updateRoomOptions() {
 							Word: primitiveCard["word"].(string),
 						}
 						for _, fword := range primitiveCard["forbbidenWords"].(primitive.A) {
-							parseCard.ForbbidenWords = append(parseCard.ForbbidenWords, fword.(string))
+							parseCard.ForbiddenWords = append(parseCard.ForbiddenWords, fword.(string))
 						}
 						parseDeck.Cards[parseCard.ID] = &parseCard
 					}

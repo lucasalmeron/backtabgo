@@ -218,7 +218,7 @@ func (gameRoom *GameRoom) TakeCard() {
 	gameRoom.TurnMistakes = append(gameRoom.TurnMistakes, &TurnMistakes{
 		Word: card.Word,
 	})
-	for _, word := range card.ForbbidenWords {
+	for _, word := range card.ForbiddenWords {
 		gameRoom.TurnMistakes = append(gameRoom.TurnMistakes, &TurnMistakes{
 			Word: word,
 		})
