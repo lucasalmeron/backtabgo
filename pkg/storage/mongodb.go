@@ -36,8 +36,8 @@ func (mongoDB *MongoDB) connect() error {
 		mongoURI = fmt.Sprintf("mongodb://localhost:27017")
 	}
 
-	if os.Getenv("MONGODB_URI") != "" {
-		mongoDataBase = os.Getenv("MONGODB_URI")
+	if os.Getenv("MONGODB_DB") != "" {
+		mongoDataBase = os.Getenv("MONGODB_DB")
 	} else {
 		mongoDataBase = "taboogame"
 	}

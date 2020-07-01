@@ -167,15 +167,19 @@ func (req *SocketRequest) submitAttemp() {
 				player.Write(req.message)
 			}
 
+			//send gameStatus
+			req.message.Action = "gameStatus"
+			req.message.Data = req.gameRoom
+			for _, player := range req.gameRoom.Players {
+				player.Write(req.message)
+			}
+
 			//send card to controller players
 			req.gameRoom.TakeCard()
 			req.message.Action = "yourCard"
 			req.message.Data = req.gameRoom.CurrentCard
 			req.gameRoom.Players[req.gameRoom.CurrentTurn.ID].Write(req.message)
-
-			//send currentCard to controller players
-			req.message.Action = "currentCard"
-			req.message.Data = req.gameRoom.CurrentCard
+			//ta = req.gameRoom.CurrentCard
 			if req.gameRoom.Players[req.gameRoom.CurrentTurn.ID].Team == 1 {
 				for _, player := range req.gameRoom.PlayersTeam2 {
 					player.Write(req.message)
@@ -223,6 +227,13 @@ func (req *SocketRequest) submitMistake() {
 						req.gameRoom.Team1Score--
 					} else {
 						req.gameRoom.Team2Score--
+					}
+
+					//send gameStatus
+					req.message.Action = "gameStatus"
+					req.message.Data = req.gameRoom
+					for _, player := range req.gameRoom.Players {
+						player.Write(req.message)
 					}
 
 					//send card to controller players
