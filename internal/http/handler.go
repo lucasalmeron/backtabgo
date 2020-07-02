@@ -14,23 +14,23 @@ import (
 	gameroom "github.com/lucasalmeron/backtabgo/pkg/gameRoom"
 )
 
-var upgrader = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
-var gameRooms = map[uuid.UUID]*gameroom.GameRoom{}
+type httpHandler struct{}
 
-type httpHandler struct {
-	router *mux.Router
-}
+var (
+	router    *mux.Router
+	upgrader  = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
+	gameRooms = map[uuid.UUID]*gameroom.GameRoom{}
+)
 
-func InitHttpHandler() *mux.Router {
-	httpRouter := &httpHandler{
-		router: mux.NewRouter().StrictSlash(true),
-	}
-	httpRouter.router.Path("/createroom").HandlerFunc(createRoom).Methods("GET", "OPTIONS")
-	httpRouter.router.Path("/joinroom/{gameroom}").HandlerFunc(joinRoom)
-	httpRouter.router.Path("/reconnectroom/{gameroom}/{playerid}").HandlerFunc(reconnect)
+func Init() *mux.Router {
+	handler := new(httpHandler)
+	router = mux.NewRouter().StrictSlash(true)
+	router.Path("/createroom").HandlerFunc(handler.createRoom).Methods("GET", "OPTIONS")
+	router.Path("/joinroom/{gameroom}").HandlerFunc(handler.joinRoom)
+	router.Path("/reconnectroom/{gameroom}/{playerid}").HandlerFunc(handler.reconnect)
 	spa := spaHandler{StaticPath: "static", IndexPath: "index.html"}
-	httpRouter.router.PathPrefix("/").Handler(spa)
-	return httpRouter.router
+	router.PathPrefix("/").Handler(spa)
+	return router
 }
 
 type spaHandler struct {
@@ -59,14 +59,14 @@ func (h spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.FileServer(http.Dir(h.StaticPath)).ServeHTTP(w, r)
 }
 
-func createRoom(w http.ResponseWriter, r *http.Request) {
+func (h httpHandler) createRoom(w http.ResponseWriter, r *http.Request) {
 
 	gameRoom := gameroom.CreateGameRoom()
 	gameRooms[gameRoom.ID] = gameRoom
 	//fmt.Println(gameRooms)
 
-	go gameRoom.StartListen()
-	fmt.Println("Goroutines \t", runtime.NumGoroutine())
+	gameRoom.Wg.Add(1)
+	go gameRoom.StartListenSocketMessages()
 
 	var response struct {
 		GameRoomID string `json:"gameRoomID"`
@@ -76,9 +76,13 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	json.NewEncoder(w).Encode(response)
+	gameRoom.Wg.Wait()
+	fmt.Println("Goroutines start room -> ", gameRoom.ID, " --> ", runtime.NumGoroutine())
+	delete(gameRooms, gameRoom.ID)
+	fmt.Println("Goroutines close room -> ", gameRoom.ID, " --> ", runtime.NumGoroutine())
 }
 
-func joinRoom(w http.ResponseWriter, r *http.Request) {
+func (h httpHandler) joinRoom(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println("WebSocket Endpoint Hit")
 	gameRoomID := mux.Vars(r)["gameroom"]
@@ -101,7 +105,7 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func reconnect(w http.ResponseWriter, r *http.Request) {
+func (h httpHandler) reconnect(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println("WebSocket Reconnect")
 	gameRoomID := mux.Vars(r)["gameroom"]

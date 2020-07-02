@@ -13,8 +13,6 @@ type Message struct {
 	Action   string      `json:"action"`
 	Data     interface{} `json:"data"`
 	PlayerID uuid.UUID   `json:"triggerPlayer"`
-	//Name     string      `json:"name"`
-	//Team     int         `json:"team"`
 }
 
 type Player struct {
@@ -51,7 +49,7 @@ func (c *Player) Read(reconnect bool) {
 		err := c.Socket.ReadJSON(&m)
 		if err != nil {
 			if ok := strings.Contains(err.Error(), "timeout"); ok {
-				message = Message{Action: "kickPlayerTimeOut", Data: "Time out", PlayerID: c.ID}
+				message = Message{Action: "playerDisconnected", Data: "Player kicked due to connection timeout", PlayerID: c.ID}
 				c.Status = "disconnected"
 				c.IncommingMessagesChannel <- message
 				fmt.Println("TimeOut", err)
@@ -72,7 +70,10 @@ func (c *Player) Read(reconnect bool) {
 				break
 			}
 			if ok := strings.Contains(err.Error(), "websocket: close 1006 (abnormal closure): unexpected EOF"); ok {
-				fmt.Println("Error ", err)
+				message = Message{Action: "playerDisconnected", Data: "Player connection closed", PlayerID: c.ID}
+				c.Status = "disconnected"
+				c.IncommingMessagesChannel <- message
+				fmt.Println("Disconnected", err)
 				break
 			}
 			fmt.Printf("unexpected type %T", err)
@@ -80,8 +81,6 @@ func (c *Player) Read(reconnect bool) {
 		}
 
 		m.PlayerID = c.ID
-		//m.Name = c.Name
-		//m.Team = c.Team
 
 		c.IncommingMessagesChannel <- m
 		//fmt.Printf("player: %+v\n", c)

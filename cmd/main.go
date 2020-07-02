@@ -29,7 +29,7 @@ func main() {
 	}
 
 	srv := &http.Server{
-		Handler: httphandler.InitHttpHandler(),
+		Handler: httphandler.Init(),
 		Addr:    addr,
 		// Good practice: enforce timeouts for servers you create!
 		WriteTimeout:   15 * time.Second,

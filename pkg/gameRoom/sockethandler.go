@@ -26,8 +26,10 @@ func (req *SocketRequest) Route() {
 		req.startGame()
 	case "playTurn":
 		req.playTurn()
-	case "broadcastNextPlayerTurn": //nextTurn
+	case "broadcastNextPlayerTurn":
 		req.broadcastNextPlayerTurn()
+	case "waitingForPlayers":
+		req.waitingForPlayers()
 	case "skipCard":
 		req.skipCard()
 	case "submitAttemp":
@@ -48,8 +50,6 @@ func (req *SocketRequest) Route() {
 		req.reconnected()
 	case "kickPlayer":
 		req.kickPlayer()
-	case "kickPlayerTimeOut":
-		req.kickPlayerTimeOut()
 	case "playerDisconnected":
 		req.playerDisconnected()
 	case "changeName":
@@ -63,12 +63,15 @@ func (req *SocketRequest) Route() {
 }
 
 func (req *SocketRequest) startGame() {
-	if req.gameRoom.Players[req.message.PlayerID].Admin && req.gameRoom.GameStatus == "waitingPlayers" && len(req.gameRoom.Settings.Decks) != 0 && len(req.gameRoom.Players) >= 4 {
+	if req.gameRoom.Players[req.message.PlayerID].Admin &&
+		req.gameRoom.GameStatus == "roomPhase" &&
+		len(req.gameRoom.Settings.Decks) != 0 &&
+		len(req.gameRoom.Players) >= 4 {
+
 		req.message.Data = "Starting game..."
 		for _, player := range req.gameRoom.Players {
 			player.Write(req.message)
 		}
-		req.gameRoom.Wg.Add(1)
 		go req.gameRoom.StartGame()
 		req.message.Action = "gameStarted"
 		req.message.Data = "Game started"
@@ -111,6 +114,12 @@ func (req *SocketRequest) playTurn() {
 func (req *SocketRequest) broadcastNextPlayerTurn() {
 	req.message.Action = "nextPlayerTurn"
 	req.message.Data = req.gameRoom
+	for _, player := range req.gameRoom.Players {
+		player.Write(req.message)
+	}
+}
+
+func (req *SocketRequest) waitingForPlayers() {
 	for _, player := range req.gameRoom.Players {
 		player.Write(req.message)
 	}
@@ -497,17 +506,8 @@ func (req *SocketRequest) kickPlayer() {
 
 }
 
-func (req *SocketRequest) kickPlayerTimeOut() {
-	//delete(req.gameRoom.Players, req.message.PlayerID)
-	req.message.Data = req.gameRoom.Players[req.message.PlayerID]
-	for _, player := range req.gameRoom.Players {
-		player.Write(req.message)
-	}
-}
-
 func (req *SocketRequest) playerDisconnected() {
 	//maybe i should set new admin here
-	//delete(gameRoom.Players, message.PlayerID)
 	req.message.Data = req.gameRoom.Players[req.message.PlayerID]
 	for _, player := range req.gameRoom.Players {
 		player.Write(req.message)
