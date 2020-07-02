@@ -51,7 +51,7 @@ type GameRoom struct {
 	GameStatus               string                       `json:"gameStatus"`
 	Settings                 *GameSettings                `json:"settings"`
 	GameChannel              chan interface{}             `json:"-"`
-	PlayerConnectedChannel   chan bool                    `json:"-"`
+	PlayerConnectedChannel   chan player.Player           `json:"-"`
 	IncommingMessagesChannel chan player.Message          `json:"-"`
 	Wg                       sync.WaitGroup               `json:"-"`
 	Mutex                    sync.Mutex                   `json:"-"`
@@ -67,10 +67,10 @@ func CreateGameRoom() *GameRoom {
 		TeamTurn:                 1,
 		GameStatus:               "roomPhase",
 		GameChannel:              make(chan interface{}),
-		PlayerConnectedChannel:   make(chan bool),
+		PlayerConnectedChannel:   make(chan player.Player),
 		IncommingMessagesChannel: make(chan player.Message),
 		Settings: &GameSettings{
-			MaxPoints:      100,
+			MaxPoints:      50,
 			MaxTurnAttemps: 0,
 			TurnTime:       1,
 			GameTime:       20,
@@ -120,8 +120,12 @@ func (gameRoom *GameRoom) AddPlayer(conn *websocket.Conn) {
 		gameRoom.Players[player.ID] = player
 		gameRoom.Mutex.Unlock()
 	}
+
 	gameRoom.Wg.Add(1)
-	gameRoom.PlayerConnectedChannel <- true
+	if gameRoom.GameStatus != "roomPhase" {
+		gameRoom.PlayerConnectedChannel <- *player
+	}
+
 	player.Read(false)
 
 }
@@ -132,7 +136,9 @@ func (gameRoom *GameRoom) ReconnectPlayer(conn *websocket.Conn, player *player.P
 	player.Status = "connected"
 	gameRoom.Mutex.Unlock()
 	gameRoom.Wg.Add(1)
-	gameRoom.PlayerConnectedChannel <- true
+	if gameRoom.GameStatus != "roomPhase" {
+		gameRoom.PlayerConnectedChannel <- *player
+	}
 	player.Read(true)
 }
 
@@ -155,7 +161,7 @@ func (gameRoom *GameRoom) checkMinPlayersConnection() {
 			break
 		}
 		//broadcast Waiting for players
-		gameRoom.sendMessage("waitingForPlayers", gameRoom)
+		gameRoom.sendMessage("waitingForPlayers", gameRoom, uuid.UUID{})
 
 		<-gameRoom.PlayerConnectedChannel
 	}
@@ -200,7 +206,11 @@ func (gameRoom *GameRoom) setNextPlayer(currentIndex1 *int, currentIndex2 *int) 
 func (gameRoom *GameRoom) StartGame() {
 	lastPlayerTeam1Index := 0
 	lastPlayerTeam2Index := 0
-	defer gameRoom.Wg.Done()
+	defer func() {
+		close(gameRoom.PlayerConnectedChannel)
+		close(gameRoom.GameChannel)
+		close(gameRoom.IncommingMessagesChannel)
+	}()
 	for {
 		//check if are minimum 2 players in each team
 		gameRoom.checkMinPlayersConnection()
@@ -211,7 +221,7 @@ func (gameRoom *GameRoom) StartGame() {
 		gameRoom.GameStatus = "gameInCourse"
 
 		//broadcast Next Player Turn
-		gameRoom.sendMessage("broadcastNextPlayerTurn", gameRoom.CurrentTurn)
+		gameRoom.sendMessage("broadcastNextPlayerTurn", gameRoom.CurrentTurn, uuid.UUID{})
 
 		fmt.Println("waiting for take a card...")
 		<-gameRoom.GameChannel
@@ -229,7 +239,7 @@ func (gameRoom *GameRoom) StartGame() {
 
 			gameRoom.GameStatus = "gameEnded"
 			//broadcast game is end
-			gameRoom.sendMessage("gameEnded", gameRoom)
+			gameRoom.sendMessage("gameEnded", gameRoom, uuid.UUID{})
 
 			break
 		}
@@ -287,11 +297,12 @@ func (gameRoom *GameRoom) SubmitPlayerAttemp(attemp string) bool {
 }
 
 //Send messages to handler
-func (gameRoom *GameRoom) sendMessage(action string, message interface{}) {
+func (gameRoom *GameRoom) sendMessage(action string, message interface{}, triggerPlayer uuid.UUID) {
 	socketReq := SocketRequest{
 		message: player.Message{
-			Action: action,
-			Data:   message,
+			Action:   action,
+			Data:     message,
+			PlayerID: triggerPlayer,
 		},
 		gameRoom: gameRoom,
 	}
@@ -303,14 +314,12 @@ func (gameRoom *GameRoom) sendMessage(action string, message interface{}) {
 
 //StartListen channel and wait for player's incomming messages, then it call socketRequest to classify
 func (gameRoom *GameRoom) StartListenSocketMessages() {
-	defer func() {
-		//pop gameroom
-	}()
+	defer gameRoom.Wg.Done()
 	for message := range gameRoom.IncommingMessagesChannel {
 		fmt.Println("message ", message)
 		if message.Action == "playerDisconnected" {
 			gameRoom.Wg.Done()
 		}
-		gameRoom.sendMessage(message.Action, message.Data)
+		gameRoom.sendMessage(message.Action, message.Data, message.PlayerID)
 	}
 }

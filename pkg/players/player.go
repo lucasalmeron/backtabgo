@@ -84,7 +84,7 @@ func (c *Player) Read(reconnect bool) {
 
 		c.IncommingMessagesChannel <- m
 		//fmt.Printf("player: %+v\n", c)
-		//fmt.Printf("Got message: %#v\n", m)
+		fmt.Printf("Got message: %#v\n", m)
 
 	}
 }

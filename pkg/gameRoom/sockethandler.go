@@ -444,11 +444,6 @@ func (req *SocketRequest) getPlayerList() {
 }
 
 func (req *SocketRequest) connected() {
-	//send PlayerList to new Player
-	/*playerList := make([]player.Player, 0) //review declaration
-	for _, player := range req.gameRoom.Players {
-		playerList = append(playerList, *player)
-	}*/
 
 	req.message.Data = req.gameRoom
 	req.gameRoom.Players[req.message.PlayerID].Write(req.message)

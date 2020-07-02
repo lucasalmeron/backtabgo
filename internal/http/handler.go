@@ -62,7 +62,9 @@ func (h spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h httpHandler) createRoom(w http.ResponseWriter, r *http.Request) {
 
 	gameRoom := gameroom.CreateGameRoom()
+	gameRoom.Mutex.Lock()
 	gameRooms[gameRoom.ID] = gameRoom
+	gameRoom.Mutex.Unlock()
 	//fmt.Println(gameRooms)
 
 	gameRoom.Wg.Add(1)
@@ -73,13 +75,19 @@ func (h httpHandler) createRoom(w http.ResponseWriter, r *http.Request) {
 	}
 	response.GameRoomID = gameRoom.ID.String()
 
+	fmt.Println("Goroutines start room -> ", gameRoom.ID, " --> ", runtime.NumGoroutine())
+	go func() {
+		gameRoom.Wg.Wait()
+		gameRoom.Mutex.Lock()
+		delete(gameRooms, gameRoom.ID)
+		gameRoom.Mutex.Unlock()
+		fmt.Println("Goroutines close room -> ", gameRoom.ID, " --> ", runtime.NumGoroutine())
+	}()
+
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	json.NewEncoder(w).Encode(response)
-	gameRoom.Wg.Wait()
-	fmt.Println("Goroutines start room -> ", gameRoom.ID, " --> ", runtime.NumGoroutine())
-	delete(gameRooms, gameRoom.ID)
-	fmt.Println("Goroutines close room -> ", gameRoom.ID, " --> ", runtime.NumGoroutine())
+
 }
 
 func (h httpHandler) joinRoom(w http.ResponseWriter, r *http.Request) {
