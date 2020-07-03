@@ -76,6 +76,12 @@ func (c *Player) Read(reconnect bool) {
 				fmt.Println("Disconnected", err)
 				break
 			}
+			if ok := strings.Contains(err.Error(), "use of closed network connection"); ok {
+				message = Message{Action: "closeConnection", Data: "Close connection", PlayerID: c.ID}
+				c.IncommingMessagesChannel <- message
+				fmt.Println("closeConnection", err)
+				break
+			}
 			fmt.Printf("unexpected type %T", err)
 			fmt.Println("Error ", err)
 		}
@@ -84,7 +90,7 @@ func (c *Player) Read(reconnect bool) {
 
 		c.IncommingMessagesChannel <- m
 		//fmt.Printf("player: %+v\n", c)
-		fmt.Printf("Got message: %#v\n", m)
+		//fmt.Printf("Got message: %#v\n", m)
 
 	}
 }

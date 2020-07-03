@@ -337,7 +337,7 @@ func (req *SocketRequest) updateRoomOptions() {
 		if output.MaxTurnAttemps > 5 {
 			req.gameRoom.Settings.MaxTurnAttemps = output.MaxTurnAttemps
 		}
-		if output.MaxPoints > 50 {
+		if output.MaxPoints > 1 {
 			req.gameRoom.Settings.MaxPoints = output.MaxPoints
 		}
 

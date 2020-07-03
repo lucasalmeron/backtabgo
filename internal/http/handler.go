@@ -61,14 +61,11 @@ func (h spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (h httpHandler) createRoom(w http.ResponseWriter, r *http.Request) {
 
-	gameRoom := gameroom.CreateGameRoom()
+	gameRoom := gameroom.NewGameRoom()
+
 	gameRoom.Mutex.Lock()
 	gameRooms[gameRoom.ID] = gameRoom
 	gameRoom.Mutex.Unlock()
-	//fmt.Println(gameRooms)
-
-	gameRoom.Wg.Add(1)
-	go gameRoom.StartListenSocketMessages()
 
 	var response struct {
 		GameRoomID string `json:"gameRoomID"`
@@ -76,6 +73,8 @@ func (h httpHandler) createRoom(w http.ResponseWriter, r *http.Request) {
 	response.GameRoomID = gameRoom.ID.String()
 
 	fmt.Println("Goroutines start room -> ", gameRoom.ID, " --> ", runtime.NumGoroutine())
+
+	//this goroutine wait for gameEnded and pop gameRoom of array
 	go func() {
 		gameRoom.Wg.Wait()
 		gameRoom.Mutex.Lock()

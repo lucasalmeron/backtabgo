@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -17,7 +18,7 @@ import (
 )
 
 //util
-func mapRandomKeyGet(mapI interface{}) interface{} {
+func getRandomKeyOfMap(mapI interface{}) interface{} {
 	keys := reflect.ValueOf(mapI).MapKeys()
 
 	return keys[rand.Intn(len(keys))].Interface()
@@ -54,17 +55,19 @@ type GameRoom struct {
 	PlayerConnectedChannel   chan player.Player           `json:"-"`
 	IncommingMessagesChannel chan player.Message          `json:"-"`
 	Wg                       sync.WaitGroup               `json:"-"`
-	Mutex                    sync.Mutex                   `json:"-"`
+	closePlayersWg           sync.WaitGroup
+	Mutex                    sync.Mutex `json:"-"`
 }
 
-//CreateGameRoom is a constructor of GameRoom
-func CreateGameRoom() *GameRoom {
-	return &GameRoom{
+//NewGameRoom is a "constructor" of GameRoom
+func NewGameRoom() *GameRoom {
+	gameRoom := &GameRoom{
 		ID:                       uuid.New(),
 		Players:                  map[uuid.UUID]*player.Player{},
 		Team1Score:               0,
 		Team2Score:               0,
 		TeamTurn:                 1,
+		CurrentTurn:              &player.Player{},
 		GameStatus:               "roomPhase",
 		GameChannel:              make(chan interface{}),
 		PlayerConnectedChannel:   make(chan player.Player),
@@ -76,9 +79,12 @@ func CreateGameRoom() *GameRoom {
 			GameTime:       20,
 			Decks:          map[string]*deck.Deck{},
 		},
-		Wg:    sync.WaitGroup{},
-		Mutex: sync.Mutex{},
+		Wg:             sync.WaitGroup{},
+		closePlayersWg: sync.WaitGroup{},
+		Mutex:          sync.Mutex{},
 	}
+	gameRoom.StartListenSocketMessages()
+	return gameRoom
 }
 
 func (gameRoom *GameRoom) AddPlayer(conn *websocket.Conn) {
@@ -204,24 +210,31 @@ func (gameRoom *GameRoom) setNextPlayer(currentIndex1 *int, currentIndex2 *int) 
 }
 
 func (gameRoom *GameRoom) StartGame() {
+	gameRoom.Wg.Add(1)
 	lastPlayerTeam1Index := 0
 	lastPlayerTeam2Index := 0
 	defer func() {
 		close(gameRoom.PlayerConnectedChannel)
 		close(gameRoom.GameChannel)
 		close(gameRoom.IncommingMessagesChannel)
+		gameRoom.Wg.Done()
 	}()
 	for {
 		//check if are minimum 2 players in each team
 		gameRoom.checkMinPlayersConnection()
 
 		//set current player and index for next player
+		gameRoom.Mutex.Lock()
 		gameRoom.setNextPlayer(&lastPlayerTeam1Index, &lastPlayerTeam2Index)
+		gameRoom.Mutex.Unlock()
 
+		gameRoom.Mutex.Lock()
 		gameRoom.GameStatus = "gameInCourse"
-
+		gameRoom.Mutex.Unlock()
 		//broadcast Next Player Turn
 		gameRoom.sendMessage("broadcastNextPlayerTurn", gameRoom.CurrentTurn, uuid.UUID{})
+
+		fmt.Println("Goroutines OnGame room -> ", gameRoom.ID, " --> ", runtime.NumGoroutine())
 
 		fmt.Println("waiting for take a card...")
 		<-gameRoom.GameChannel
@@ -235,16 +248,25 @@ func (gameRoom *GameRoom) StartGame() {
 
 		fmt.Println("END TURN")
 
+		gameRoom.Mutex.Lock()
 		if gameRoom.Settings.MaxPoints <= gameRoom.Team1Score || gameRoom.Settings.MaxPoints <= gameRoom.Team2Score || gameRoom.TotalCards == 0 {
 
 			gameRoom.GameStatus = "gameEnded"
+
+			gameRoom.Mutex.Unlock()
 			//broadcast game is end
 			gameRoom.sendMessage("gameEnded", gameRoom, uuid.UUID{})
 
 			break
 		}
+		gameRoom.Mutex.Unlock()
 	}
-	fmt.Println("game end")
+	for _, player := range gameRoom.Players {
+		gameRoom.closePlayersWg.Add(1)
+		player.Socket.Close()
+	}
+	gameRoom.closePlayersWg.Wait()
+	fmt.Println("game ended")
 }
 
 func (gameRoom *GameRoom) TakeCard() {
@@ -252,12 +274,12 @@ func (gameRoom *GameRoom) TakeCard() {
 	var randKeyDeck string
 	var randKeyCard string
 	for {
-		randKeyDeck = mapRandomKeyGet(gameRoom.Settings.Decks).(string)
+		randKeyDeck = getRandomKeyOfMap(gameRoom.Settings.Decks).(string)
 		if gameRoom.Settings.Decks[randKeyDeck].CardsLength > 0 {
 			break
 		}
 	}
-	randKeyCard = mapRandomKeyGet(gameRoom.Settings.Decks[randKeyDeck].Cards).(string)
+	randKeyCard = getRandomKeyOfMap(gameRoom.Settings.Decks[randKeyDeck].Cards).(string)
 	card := gameRoom.Settings.Decks[randKeyDeck].Cards[randKeyCard]
 	delete(gameRoom.Settings.Decks[randKeyDeck].Cards, randKeyCard)
 	gameRoom.Settings.Decks[randKeyDeck].CardsLength--
@@ -314,12 +336,20 @@ func (gameRoom *GameRoom) sendMessage(action string, message interface{}, trigge
 
 //StartListen channel and wait for player's incomming messages, then it call socketRequest to classify
 func (gameRoom *GameRoom) StartListenSocketMessages() {
-	defer gameRoom.Wg.Done()
-	for message := range gameRoom.IncommingMessagesChannel {
-		fmt.Println("message ", message)
-		if message.Action == "playerDisconnected" {
-			gameRoom.Wg.Done()
+	gameRoom.Wg.Add(1)
+	go func() {
+		defer gameRoom.Wg.Done()
+		for message := range gameRoom.IncommingMessagesChannel {
+			fmt.Println("message ", message)
+			if message.Action == "playerDisconnected" {
+				gameRoom.Wg.Done()
+			}
+			if message.Action != "closeConnection" {
+				gameRoom.sendMessage(message.Action, message.Data, message.PlayerID)
+			} else {
+				gameRoom.closePlayersWg.Done()
+				gameRoom.Wg.Done()
+			}
 		}
-		gameRoom.sendMessage(message.Action, message.Data, message.PlayerID)
-	}
+	}()
 }
