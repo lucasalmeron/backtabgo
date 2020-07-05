@@ -28,8 +28,6 @@ func Init() *mux.Router {
 	router.Path("/createroom").HandlerFunc(handler.createRoom).Methods("GET", "OPTIONS")
 	router.Path("/joinroom/{gameroom}").HandlerFunc(handler.joinRoom)
 	router.Path("/reconnectroom/{gameroom}/{playerid}").HandlerFunc(handler.reconnect)
-	spa := spaHandler{StaticPath: "static", IndexPath: "index.html"}
-	router.PathPrefix("/").Handler(spa)
 	return router
 }
 
@@ -114,7 +112,7 @@ func (h httpHandler) joinRoom(w http.ResponseWriter, r *http.Request) {
 
 func (h httpHandler) reconnect(w http.ResponseWriter, r *http.Request) {
 
-	fmt.Println("WebSocket Reconnect")
+	fmt.Println("WebSocket Reconnect Hit")
 	gameRoomID := mux.Vars(r)["gameroom"]
 	playerID := mux.Vars(r)["playerid"]
 
