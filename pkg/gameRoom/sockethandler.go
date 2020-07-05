@@ -56,6 +56,8 @@ func (req *SocketRequest) Route() {
 		req.changeName()
 	case "gameEnded":
 		req.gameEnded()
+	case "keepAlive":
+		req.keepAlive()
 	default:
 		fmt.Println("doesn't match any socket endpoint")
 	}
@@ -529,4 +531,9 @@ func (req *SocketRequest) gameEnded() {
 	for _, player := range req.gameRoom.Players {
 		player.Write(req.message)
 	}
+}
+
+func (req *SocketRequest) keepAlive() {
+	req.message.Data = "OK"
+	req.gameRoom.Players[req.message.PlayerID].Write(req.message)
 }
