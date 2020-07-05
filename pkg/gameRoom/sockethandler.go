@@ -136,6 +136,14 @@ func (req *SocketRequest) skipCard() {
 		} else {
 			req.gameRoom.Team2Score--
 		}
+
+		//send gameStatus
+		req.message.Action = "gameStatus"
+		req.message.Data = req.gameRoom
+		for _, player := range req.gameRoom.Players {
+			player.Write(req.message)
+		}
+
 		//send card to controller players
 		req.gameRoom.TakeCard()
 		req.message.Action = "yourCard"
