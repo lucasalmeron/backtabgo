@@ -39,9 +39,9 @@ func (c *Player) Read(reconnect bool) {
 		message = Message{Action: "connected", Data: "connection success", PlayerID: c.ID}
 	}
 
-	c.IncommingMessagesChannel <- message
-
 	c.Socket.SetReadDeadline(time.Now().Add(10 * time.Minute))
+
+	c.IncommingMessagesChannel <- message
 
 	for {
 

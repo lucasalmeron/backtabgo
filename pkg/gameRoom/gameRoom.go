@@ -128,7 +128,7 @@ func (gameRoom *GameRoom) AddPlayer(conn *websocket.Conn) {
 	}
 
 	gameRoom.Wg.Add(1)
-	if gameRoom.GameStatus != "roomPhase" {
+	if gameRoom.GameStatus == "waitingMinPlayers" {
 		gameRoom.PlayerConnectedChannel <- *player
 	}
 
@@ -142,7 +142,7 @@ func (gameRoom *GameRoom) ReconnectPlayer(conn *websocket.Conn, player *player.P
 	player.Status = "connected"
 	gameRoom.Mutex.Unlock()
 	gameRoom.Wg.Add(1)
-	if gameRoom.GameStatus != "roomPhase" {
+	if gameRoom.GameStatus == "waitingMinPlayers" {
 		gameRoom.PlayerConnectedChannel <- *player
 	}
 	player.Read(true)
@@ -150,6 +150,7 @@ func (gameRoom *GameRoom) ReconnectPlayer(conn *websocket.Conn, player *player.P
 
 //it check if are minimum 2 players in each team and it stay waiting for reconnects or connects
 func (gameRoom *GameRoom) checkMinPlayersConnection() {
+	lastState := gameRoom.GameStatus
 	for {
 		disconnectedCountT1 := 0
 		for _, player := range gameRoom.PlayersTeam1 {
@@ -164,8 +165,10 @@ func (gameRoom *GameRoom) checkMinPlayersConnection() {
 			}
 		}
 		if len(gameRoom.PlayersTeam1)-disconnectedCountT1 >= 2 && len(gameRoom.PlayersTeam2)-disconnectedCountT2 >= 2 {
+			gameRoom.GameStatus = lastState
 			break
 		}
+		gameRoom.GameStatus = "waitingMinPlayers"
 		//broadcast Waiting for players
 		gameRoom.sendMessage("waitingForPlayers", gameRoom, uuid.UUID{})
 
@@ -270,7 +273,7 @@ func (gameRoom *GameRoom) StartGame() {
 }
 
 func (gameRoom *GameRoom) TakeCard() {
-	//{"action":"updateRoomOptions","data":{"turnTime":1,"maxPoints":50,"decks":["5eeead0fcc4d1e8c5f635a18"]}}
+	//{"action":"updateRoomOptions","data":{"turnTime":1,"maxPoints":50,"decks":["5efc0f2e2cbb5fc167518d51"]}}
 	var randKeyDeck string
 	var randKeyCard string
 	for {
