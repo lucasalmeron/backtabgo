@@ -147,7 +147,15 @@ func (req *SocketRequest) skipCard() {
 		}
 
 		//send card to controller players
-		req.gameRoom.TakeCard()
+		err := req.gameRoom.TakeCard()
+		if err != nil {
+			req.message.Action = "emptyDecks"
+			req.message.Data = "there aren't more cards"
+			for _, player := range req.gameRoom.Players {
+				player.Write(req.message)
+			}
+			return
+		}
 		req.message.Action = "yourCard"
 		req.message.Data = req.gameRoom.CurrentCard
 		req.gameRoom.Players[req.gameRoom.CurrentTurn.ID].Write(req.message)
@@ -194,7 +202,15 @@ func (req *SocketRequest) submitAttemp() {
 			}
 
 			//send card to controller players
-			req.gameRoom.TakeCard()
+			err := req.gameRoom.TakeCard()
+			if err != nil {
+				req.message.Action = "emptyDecks"
+				req.message.Data = "there aren't more cards"
+				for _, player := range req.gameRoom.Players {
+					player.Write(req.message)
+				}
+				return
+			}
 			req.message.Action = "yourCard"
 			req.message.Data = req.gameRoom.CurrentCard
 			req.gameRoom.Players[req.gameRoom.CurrentTurn.ID].Write(req.message)
@@ -256,7 +272,15 @@ func (req *SocketRequest) submitMistake() {
 					}
 
 					//send card to controller players
-					req.gameRoom.TakeCard()
+					err := req.gameRoom.TakeCard()
+					if err != nil {
+						req.message.Action = "emptyDecks"
+						req.message.Data = "there aren't more cards"
+						for _, player := range req.gameRoom.Players {
+							player.Write(req.message)
+						}
+						return
+					}
 					req.message.Action = "yourCard"
 					req.message.Data = req.gameRoom.CurrentCard
 					req.gameRoom.Players[req.gameRoom.CurrentTurn.ID].Write(req.message)

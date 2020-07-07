@@ -53,7 +53,7 @@ type GameRoom struct {
 	CurrentCard              *card.Card                   `json:"-"`
 	GameStatus               string                       `json:"gameStatus"`
 	Settings                 *GameSettings                `json:"settings"`
-	GameChannel              chan interface{}             `json:"-"`
+	gameChannel              chan bool                    `json:"-"`
 	PlayerConnectedChannel   chan player.Player           `json:"-"`
 	IncommingMessagesChannel chan player.Message          `json:"-"`
 	Wg                       sync.WaitGroup               `json:"-"`
@@ -71,7 +71,7 @@ func NewGameRoom() *GameRoom {
 		TeamTurn:                 1,
 		CurrentTurn:              &player.Player{},
 		GameStatus:               "roomPhase",
-		GameChannel:              make(chan interface{}),
+		gameChannel:              make(chan bool),
 		PlayerConnectedChannel:   make(chan player.Player),
 		IncommingMessagesChannel: make(chan player.Message),
 		Settings: &GameSettings{
@@ -222,7 +222,7 @@ func (gameRoom *GameRoom) StartGame() {
 	gameRoom.GameTime = gameTime.Unix()
 	defer func() {
 		close(gameRoom.PlayerConnectedChannel)
-		close(gameRoom.GameChannel)
+		close(gameRoom.gameChannel)
 		close(gameRoom.IncommingMessagesChannel)
 		gameRoom.Wg.Done()
 	}()
@@ -244,18 +244,20 @@ func (gameRoom *GameRoom) StartGame() {
 		fmt.Println("Goroutines OnGame room -> ", gameRoom.ID, " --> ", runtime.NumGoroutine())
 
 		fmt.Println("waiting for take a card...")
-		<-gameRoom.GameChannel
-		fmt.Println("taken card, turn in course")
-		turnTime := time.Now()
-		gameRoom.TurnTime = turnTime.Unix()
+		chanValue := <-gameRoom.gameChannel
+		if chanValue {
+			fmt.Println("taken card, turn in course")
+			turnTime := time.Now()
+			gameRoom.TurnTime = turnTime.Unix()
 
-		gameRoom.Mutex.Lock()
-		gameRoom.GameStatus = "turnInCourse"
-		gameRoom.Mutex.Unlock()
-		//TIME TO SEND ATTEMPS
-		time.Sleep(time.Duration(gameRoom.Settings.TurnTime) * time.Minute)
+			gameRoom.Mutex.Lock()
+			gameRoom.GameStatus = "turnInCourse"
+			gameRoom.Mutex.Unlock()
+			//TIME TO SEND ATTEMPS
+			time.Sleep(time.Duration(gameRoom.Settings.TurnTime) * time.Minute)
 
-		fmt.Println("END TURN")
+			fmt.Println("END TURN")
+		}
 
 		gameRoom.Mutex.Lock()
 		if gameRoom.Settings.MaxPoints <= gameRoom.Team1Score || gameRoom.Settings.MaxPoints <= gameRoom.Team2Score || gameRoom.TotalCards == 0 {
@@ -278,30 +280,35 @@ func (gameRoom *GameRoom) StartGame() {
 	fmt.Println("game ended")
 }
 
-func (gameRoom *GameRoom) TakeCard() {
+func (gameRoom *GameRoom) TakeCard() error {
 	//{"action":"updateRoomOptions","data":{"turnTime":1,"maxPoints":50,"decks":["5efc0f2e2cbb5fc167518d51"]}}
-	var randKeyDeck string
-	var randKeyCard string
-	for {
-		randKeyDeck = getRandomKeyOfMap(gameRoom.Settings.Decks).(string)
-		if gameRoom.Settings.Decks[randKeyDeck].CardsLength > 0 {
-			break
+	if gameRoom.TotalCards > 0 {
+		var randKeyDeck string
+		var randKeyCard string
+		for {
+			randKeyDeck = getRandomKeyOfMap(gameRoom.Settings.Decks).(string)
+			if gameRoom.Settings.Decks[randKeyDeck].CardsLength > 0 {
+				break
+			}
 		}
-	}
-	randKeyCard = getRandomKeyOfMap(gameRoom.Settings.Decks[randKeyDeck].Cards).(string)
-	card := gameRoom.Settings.Decks[randKeyDeck].Cards[randKeyCard]
-	delete(gameRoom.Settings.Decks[randKeyDeck].Cards, randKeyCard)
-	gameRoom.Settings.Decks[randKeyDeck].CardsLength--
-	gameRoom.CurrentCard = card
-	gameRoom.TurnMistakes = nil
-	gameRoom.TurnMistakes = append(gameRoom.TurnMistakes, &TurnMistakes{
-		Word: card.Word,
-	})
-	for _, word := range card.ForbiddenWords {
+		randKeyCard = getRandomKeyOfMap(gameRoom.Settings.Decks[randKeyDeck].Cards).(string)
+		card := gameRoom.Settings.Decks[randKeyDeck].Cards[randKeyCard]
+		delete(gameRoom.Settings.Decks[randKeyDeck].Cards, randKeyCard)
+		gameRoom.Settings.Decks[randKeyDeck].CardsLength--
+		gameRoom.TotalCards--
+		gameRoom.CurrentCard = card
+		gameRoom.TurnMistakes = nil
 		gameRoom.TurnMistakes = append(gameRoom.TurnMistakes, &TurnMistakes{
-			Word: word,
+			Word: card.Word,
 		})
+		for _, word := range card.ForbiddenWords {
+			gameRoom.TurnMistakes = append(gameRoom.TurnMistakes, &TurnMistakes{
+				Word: word,
+			})
+		}
+		return nil
 	}
+	return fmt.Errorf("Empty Decks")
 
 }
 
@@ -309,8 +316,12 @@ func (gameRoom *GameRoom) PlayTurn() {
 	//check if are minimum 2 players in each team
 	gameRoom.checkMinPlayersConnection()
 
-	gameRoom.TakeCard()
-	gameRoom.GameChannel <- true
+	err := gameRoom.TakeCard()
+	if err != nil {
+		gameRoom.gameChannel <- false
+		return
+	}
+	gameRoom.gameChannel <- true
 }
 
 func (gameRoom *GameRoom) SubmitPlayerAttemp(attemp string) bool {
