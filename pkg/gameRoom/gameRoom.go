@@ -45,6 +45,8 @@ type GameRoom struct {
 	PlayersTeam1             []*player.Player             `json:"team1"`
 	PlayersTeam2             []*player.Player             `json:"team2"`
 	TeamTurn                 int                          `json:"teamTurn"`
+	TurnTime                 int64                        `json:"turnTime"`
+	GameTime                 int64                        `json:"gameTime"`
 	TurnMistakes             []*TurnMistakes              `json:"teamMistakes"`
 	TotalCards               int                          `json:"totalCards"`
 	CurrentTurn              *player.Player               `json:"currentTurn"`
@@ -216,6 +218,8 @@ func (gameRoom *GameRoom) StartGame() {
 	gameRoom.Wg.Add(1)
 	lastPlayerTeam1Index := 0
 	lastPlayerTeam2Index := 0
+	gameTime := time.Now()
+	gameRoom.GameTime = gameTime.Unix()
 	defer func() {
 		close(gameRoom.PlayerConnectedChannel)
 		close(gameRoom.GameChannel)
@@ -242,6 +246,8 @@ func (gameRoom *GameRoom) StartGame() {
 		fmt.Println("waiting for take a card...")
 		<-gameRoom.GameChannel
 		fmt.Println("taken card, turn in course")
+		turnTime := time.Now()
+		gameRoom.TurnTime = turnTime.Unix()
 
 		gameRoom.Mutex.Lock()
 		gameRoom.GameStatus = "turnInCourse"
