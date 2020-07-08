@@ -129,6 +129,14 @@ func (req *SocketRequest) waitingForPlayers() {
 
 func (req *SocketRequest) skipCard() {
 	if req.gameRoom.GameStatus == "turnInCourse" && req.gameRoom.CurrentTurn.ID == req.message.PlayerID {
+		if req.gameRoom.TotalCards == 0 {
+			req.message.Action = "emptyDecks"
+			req.message.Data = "there aren't more cards"
+			for _, player := range req.gameRoom.Players {
+				player.Write(req.message)
+			}
+			return
+		}
 		req.message.Action = "cardSkipped"
 		for _, player := range req.gameRoom.Players {
 			player.Write(req.message)
