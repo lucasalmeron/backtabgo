@@ -168,7 +168,7 @@ func (gameRoom *GameRoom) checkMinPlayersConnection() {
 		}
 		if len(gameRoom.PlayersTeam1)-disconnectedCountT1 >= 2 && len(gameRoom.PlayersTeam2)-disconnectedCountT2 >= 2 {
 			gameRoom.GameStatus = lastState
-			break
+			return
 		}
 		gameRoom.GameStatus = "waitingMinPlayers"
 		//broadcast Waiting for players
@@ -181,8 +181,10 @@ func (gameRoom *GameRoom) checkMinPlayersConnection() {
 func (gameRoom *GameRoom) setNextPlayer(currentIndex1 *int, currentIndex2 *int) {
 	if gameRoom.TeamTurn == 1 {
 		for {
-			if gameRoom.PlayersTeam1[*currentIndex1].Status == "connected" &&
-				gameRoom.PlayersTeam1[*currentIndex1].ID != gameRoom.CurrentTurn.ID {
+			if gameRoom.PlayersTeam1[*currentIndex1].Status == "connected" {
+				gameRoom.CurrentTurn = gameRoom.PlayersTeam1[*currentIndex1]
+				gameRoom.TeamTurn = 2
+				*currentIndex1++
 				break
 			}
 			if len(gameRoom.PlayersTeam1)-1 == *currentIndex1 {
@@ -192,14 +194,12 @@ func (gameRoom *GameRoom) setNextPlayer(currentIndex1 *int, currentIndex2 *int) 
 			}
 
 		}
-		//maybe datarace here...
-		gameRoom.CurrentTurn = gameRoom.PlayersTeam1[*currentIndex1]
-		gameRoom.TeamTurn = 2
-
 	} else {
 		for {
-			if gameRoom.PlayersTeam1[*currentIndex2].Status == "connected" &&
-				gameRoom.PlayersTeam2[*currentIndex2].ID != gameRoom.CurrentTurn.ID {
+			if gameRoom.PlayersTeam1[*currentIndex2].Status == "connected" {
+				gameRoom.CurrentTurn = gameRoom.PlayersTeam2[*currentIndex2]
+				gameRoom.TeamTurn = 1
+				*currentIndex2++
 				break
 			}
 			if len(gameRoom.PlayersTeam2)-1 == *currentIndex2 {
@@ -208,9 +208,6 @@ func (gameRoom *GameRoom) setNextPlayer(currentIndex1 *int, currentIndex2 *int) 
 				*currentIndex2++
 			}
 		}
-		//maybe datarace here...
-		gameRoom.CurrentTurn = gameRoom.PlayersTeam2[*currentIndex2]
-		gameRoom.TeamTurn = 1
 	}
 }
 
@@ -218,6 +215,7 @@ func (gameRoom *GameRoom) StartGame() {
 	gameRoom.Wg.Add(1)
 	lastPlayerTeam1Index := 0
 	lastPlayerTeam2Index := 0
+	//set game time
 	gameTime := time.Now()
 	gameRoom.GameTime = gameTime.Unix()
 	defer func() {
@@ -247,10 +245,10 @@ func (gameRoom *GameRoom) StartGame() {
 		chanValue := <-gameRoom.gameChannel
 		if chanValue {
 			fmt.Println("taken card, turn in course")
+			gameRoom.Mutex.Lock()
 			turnTime := time.Now()
 			gameRoom.TurnTime = turnTime.Unix()
 
-			gameRoom.Mutex.Lock()
 			gameRoom.GameStatus = "turnInCourse"
 			gameRoom.Mutex.Unlock()
 			//TIME TO SEND ATTEMPS
@@ -340,6 +338,7 @@ func (gameRoom *GameRoom) SubmitPlayerAttemp(attemp string) bool {
 
 //Send messages to handler
 func (gameRoom *GameRoom) sendMessage(action string, message interface{}, triggerPlayer uuid.UUID) {
+	gameRoom.Mutex.Lock()
 	socketReq := SocketRequest{
 		message: player.Message{
 			Action:   action,
@@ -348,8 +347,6 @@ func (gameRoom *GameRoom) sendMessage(action string, message interface{}, trigge
 		},
 		gameRoom: gameRoom,
 	}
-	//could i lock each action on socket handler???
-	gameRoom.Mutex.Lock()
 	socketReq.Route()
 	gameRoom.Mutex.Unlock()
 }
