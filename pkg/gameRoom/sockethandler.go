@@ -6,12 +6,8 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	card "github.com/lucasalmeron/backtabgo/pkg/cards"
 	deck "github.com/lucasalmeron/backtabgo/pkg/decks"
 	player "github.com/lucasalmeron/backtabgo/pkg/players"
-	"github.com/lucasalmeron/backtabgo/pkg/storage"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type SocketRequest struct {
@@ -67,7 +63,7 @@ func (req *SocketRequest) Route() {
 func (req *SocketRequest) startGame() {
 	if req.gameRoom.Players[req.message.PlayerID].Admin &&
 		req.gameRoom.GameStatus == "roomPhase" &&
-		len(req.gameRoom.Settings.Decks) != 0 &&
+		len(req.gameRoom.Settings.Decks) > 0 &&
 		len(req.gameRoom.Players) >= 4 {
 
 		req.message.Data = "Starting game..."
@@ -321,37 +317,12 @@ func (req *SocketRequest) submitMistake() {
 
 func (req *SocketRequest) getDecks() {
 
-	/*groupStage := bson.D{
-		{"$lookup", bson.D{
-			{"from", "cards"},
-			{"localField", "cards"},
-			{"foreignField", "_id"},
-			{"as", "cards"},
-		}},
-	}
-	db := storage.GetMongoDBConnection()
-	decks, err := db.Aggregate("decks", groupStage)
-	if err != nil {
-		req.message.Data = "db error"
-	}*/
-	db := storage.GetMongoDBConnection()
-	dbDecks, err := db.FindAll("decks")
+	deckService := new(deck.Deck)
+	dbDecks, err := deckService.GetDecks()
 	if err != nil {
 		req.message.Data = "db error"
 	}
 
-	for _, dbDeck := range dbDecks {
-		dbDeck["CardsLength"] = len(dbDeck["cards"].(primitive.A))
-		delete(dbDeck, "cards")
-	}
-
-	/*data, err := db.InsertOne("cards", card.Card{
-		Word:           "Radiador",
-		ForbbidenWords: []string{"Agua", "Motor", "Regrigerante", "Enfriar", "Auto"},
-	})
-	if err != nil {
-		req.message.Data = err
-	}*/
 	req.message.Data = dbDecks
 	req.gameRoom.Players[req.message.PlayerID].Write(req.message)
 }
@@ -383,52 +354,24 @@ func (req *SocketRequest) updateRoomOptions() {
 			req.gameRoom.Settings.MaxPoints = output.MaxPoints
 		}
 
-		groupStage := bson.D{
-			{"$lookup", bson.D{
-				{"from", "cards"},
-				{"localField", "cards"},
-				{"foreignField", "_id"},
-				{"as", "cards"},
-			}},
-		}
-		db := storage.GetMongoDBConnection()
-		dbDecks, err := db.Aggregate("decks", groupStage)
+		deckService := new(deck.Deck)
+		dbDecks, err := deckService.GetDecksWithCards()
 		if err != nil {
 			req.message.Data = "db error"
 		}
-		//{"action":"updateRoomOptions","data":{"turnTime":20,"decks":["5eeead0fcc4d1e8c5f635a18"]}}
 
-		// PARSE PRIMITIVES FROM MONGO TO STRUCT
 		totalCards := 0
 		for _, reqDeckID := range output.Decks {
 			for _, dbDeck := range dbDecks {
-				stringID := dbDeck["_id"].(primitive.ObjectID).Hex()
-				if stringID == reqDeckID {
-					parseDeck := deck.Deck{
-						ID:    reqDeckID,
-						Name:  dbDeck["name"].(string),
-						Theme: dbDeck["theme"].(string),
-						Cards: map[string]*card.Card{},
-					}
-					for _, dbCard := range dbDeck["cards"].(primitive.A) {
-						primitiveCard := dbCard.(primitive.M)
-						parseCard := card.Card{
-							ID:   primitiveCard["_id"].(primitive.ObjectID).Hex(),
-							Word: primitiveCard["word"].(string),
-						}
-						for _, fword := range primitiveCard["forbiddenWords"].(primitive.A) {
-							parseCard.ForbiddenWords = append(parseCard.ForbiddenWords, fword.(string))
-						}
-						parseDeck.Cards[parseCard.ID] = &parseCard
-					}
-					parseDeck.CardsLength = len(parseDeck.Cards)
-					totalCards += len(parseDeck.Cards)
-					req.gameRoom.Settings.Decks[reqDeckID] = &parseDeck
+				var deck = dbDeck
+				if deck.ID == reqDeckID {
+					totalCards += dbDeck.CardsLength
+					req.gameRoom.Settings.Decks[reqDeckID] = &deck
 				}
 			}
 		}
+
 		req.gameRoom.TotalCards = totalCards
-		// PARSE PRIMITIVES FROM MONGO TO STRUCT
 
 		req.message.Data = req.gameRoom
 		//broadcast Options

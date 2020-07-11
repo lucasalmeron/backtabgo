@@ -10,12 +10,13 @@ import (
 	"time"
 
 	httphandler "github.com/lucasalmeron/backtabgo/internal/http"
-	storage "github.com/lucasalmeron/backtabgo/pkg/storage"
+	mongostorage "github.com/lucasalmeron/backtabgo/pkg/storage/mongo"
 )
 
 func main() {
 
-	err := storage.NewMongoDBConnection()
+	err := mongostorage.NewMongoDBConnection()
+
 	if err != nil {
 		log.Fatal("MongoDb Connection Error: %v", err)
 	}

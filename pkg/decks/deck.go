@@ -1,6 +1,8 @@
 package deck
 
 import (
+	"context"
+
 	card "github.com/lucasalmeron/backtabgo/pkg/cards"
 )
 
@@ -10,4 +12,9 @@ type Deck struct {
 	Theme       string                `json:"theme"`
 	CardsLength int                   `json:"cardsLength"`
 	Cards       map[string]*card.Card `json:"-"`
+}
+
+type DeckRepository interface {
+	GetDecks(ctx context.Context) ([]Deck, error)
+	GetDecksWithCards(ctx context.Context) ([]Deck, error)
 }
