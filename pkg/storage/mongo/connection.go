@@ -2,9 +2,7 @@ package mongostorage
 
 import (
 	"context"
-	"fmt"
 	"log"
-	"os"
 
 	deck "github.com/lucasalmeron/backtabgo/pkg/decks"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -15,10 +13,15 @@ var mgo *MongoDB
 
 type MongoDB struct {
 	connection *mongo.Database
+	mongoURI   string
+	database   string
 }
 
-func NewMongoDBConnection() error {
-	mgo = &MongoDB{}
+func NewMongoDBConnection(mongoURI string, database string) error {
+	mgo = new(MongoDB)
+
+	mgo.mongoURI = mongoURI
+	mgo.database = database
 
 	err := mgo.connect()
 	if err != nil {
@@ -35,21 +38,7 @@ func GetMongoDBConnection() *MongoDB {
 
 func (mongoDB *MongoDB) connect() error {
 
-	var mongoURI string
-	var mongoDataBase string
-	if os.Getenv("MONGODB_URI") != "" {
-		mongoURI = os.Getenv("MONGODB_URI")
-	} else {
-		mongoURI = fmt.Sprintf("mongodb://localhost:27017")
-	}
-
-	if os.Getenv("MONGODB_DB") != "" {
-		mongoDataBase = os.Getenv("MONGODB_DB")
-	} else {
-		mongoDataBase = "taboogame"
-	}
-
-	clientOpts := options.Client().ApplyURI(mongoURI)
+	clientOpts := options.Client().ApplyURI(mgo.mongoURI)
 	client, err := mongo.Connect(context.TODO(), clientOpts)
 	if err != nil {
 		log.Fatal(err)
@@ -63,7 +52,7 @@ func (mongoDB *MongoDB) connect() error {
 		return err
 	}
 
-	mongoDB.connection = client.Database(mongoDataBase)
+	mongoDB.connection = client.Database(mgo.database)
 	log.Println("MongoDB connection success")
 	return nil
 }
