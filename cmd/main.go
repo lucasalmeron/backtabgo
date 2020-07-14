@@ -34,7 +34,7 @@ func main() {
 
 	err := mongostorage.NewMongoDBConnection(mongoURI, mongoDataBase)
 	if err != nil {
-		log.Fatal("MongoDb Connection Error: %v", err)
+		log.Fatal("MongoDb Connection Error: ", err)
 	}
 
 	srv := &http.Server{
@@ -50,7 +50,7 @@ func main() {
 
 	fmt.Printf("Server started on %s. CTRL+C for shutdown.\n", addr)
 	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-		log.Fatal("ListenAndServe Error: %v", err)
+		log.Fatal("ListenAndServe Error: ", err)
 	}
 
 	fmt.Println("Shutdown Success.")

@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 
+	card "github.com/lucasalmeron/backtabgo/pkg/cards"
 	deck "github.com/lucasalmeron/backtabgo/pkg/decks"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -29,6 +30,7 @@ func NewMongoDBConnection(mongoURI string, database string) error {
 	}
 	//set deck Repository
 	deck.SetRepository(NewDeckService(mgo.connection))
+	card.SetRepository(NewCardService(mgo.connection))
 	return nil
 }
 
