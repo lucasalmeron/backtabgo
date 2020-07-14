@@ -2,9 +2,9 @@ package card
 
 import "context"
 
-var repository CardRepository
+var repository Repository
 
-func SetRepository(repo CardRepository) {
+func SetRepository(repo Repository) {
 	repository = repo
 }
 

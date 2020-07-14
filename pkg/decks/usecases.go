@@ -2,9 +2,9 @@ package deck
 
 import "context"
 
-var repository DeckRepository
+var repository Repository
 
-func SetRepository(repo DeckRepository) {
+func SetRepository(repo Repository) {
 	repository = repo
 }
 
@@ -20,14 +20,14 @@ func (Deck *Deck) GetDeck(cardID string) (*Deck, error) {
 	return repository.GetDeck(context.Background(), cardID)
 }
 
-func (Deck *Deck) NewDeck(newCard Deck) (*Deck, error) {
-	return repository.NewDeck(context.Background(), newCard)
+func (Deck *Deck) NewDeck(newDeck RequestDeck) (*Deck, error) {
+	return repository.NewDeck(context.Background(), newDeck)
 }
 
-func (Deck *Deck) UpdateDeck(reqCard Deck) (*Deck, error) {
-	return repository.UpdateDeck(context.Background(), reqCard)
+func (Deck *Deck) UpdateDeck(reqDeck RequestDeck) (*Deck, error) {
+	return repository.UpdateDeck(context.Background(), reqDeck)
 }
 
-func (Deck *Deck) DeleteDeck(reqCard Deck) error {
-	return repository.DeleteDeck(context.Background(), reqCard)
+func (Deck *Deck) DeleteDeck(reqDeck Deck) error {
+	return repository.DeleteDeck(context.Background(), reqDeck)
 }

@@ -16,7 +16,7 @@ type CardService struct {
 	collection *mongo.Collection
 }
 
-func NewCardService(db *mongo.Database) card.CardRepository {
+func NewCardService(db *mongo.Database) card.Repository {
 	return &CardService{db, db.Collection("cards")}
 }
 

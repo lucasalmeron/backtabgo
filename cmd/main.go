@@ -39,8 +39,12 @@ func main() {
 	}
 
 	router := mux.NewRouter().StrictSlash(true)
-	httphandler.Init(router)
+
+	// Only matches if domain is "www.example.com".
+	//router.Host("www.example.com")
+	httphandler.InitRoomHandler(router)
 	httphandler.InitDeckHandler(router)
+	httphandler.InitCardHandler(router)
 
 	srv := &http.Server{
 		Handler: router,

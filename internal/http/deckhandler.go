@@ -2,6 +2,7 @@ package httphandler
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -14,7 +15,11 @@ type httpDeckHandler struct{}
 func InitDeckHandler(router *mux.Router) {
 	handler := new(httpDeckHandler)
 
-	router.Path("/getdecks").HandlerFunc(handler.getDecks).Methods(http.MethodGet, http.MethodOptions)
+	router.Path("/decks").HandlerFunc(handler.getDecks).Methods(http.MethodGet, http.MethodOptions)
+	router.Path("/decks/{deckID:[0-9a-fA-F]{24}}").HandlerFunc(handler.getDeck).Methods(http.MethodGet, http.MethodOptions)
+
+	router.Path("/decks").HandlerFunc(handler.newDeck).Methods(http.MethodPost, http.MethodOptions)
+	router.Path("/decks").HandlerFunc(handler.updateDeck).Methods(http.MethodPut, http.MethodOptions)
 
 }
 
@@ -46,4 +51,109 @@ func (h httpDeckHandler) getDecks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(decks)
+}
+
+func (h httpDeckHandler) getDeck(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	deckID := mux.Vars(r)["deckID"]
+
+	deckRepository := new(deck.Deck)
+	dbDeck, err := deckRepository.GetDeck(deckID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode("db error")
+		return
+	}
+
+	json.NewEncoder(w).Encode(dbDeck)
+}
+
+func (h httpDeckHandler) newDeck(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	decoder := json.NewDecoder(r.Body)
+
+	var req deck.RequestDeck
+	err := decoder.Decode(&req)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode("Error unmarshalling request body")
+		return
+	}
+
+	deck := new(deck.Deck)
+	newDeck, err := deck.NewDeck(req)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode("Error creating new deck")
+		return
+	}
+
+	response := struct {
+		ID          string      `json:"id"`
+		Name        string      `json:"name"`
+		Theme       string      `json:"theme"`
+		CardsLength int         `json:"cardsLength"`
+		Cards       []card.Card `json:"cards"`
+	}{
+		ID:          newDeck.ID,
+		Name:        newDeck.Name,
+		Theme:       newDeck.Theme,
+		CardsLength: newDeck.CardsLength,
+		Cards:       []card.Card{},
+	}
+
+	for _, card := range newDeck.Cards {
+		response.Cards = append(response.Cards, *card)
+	}
+
+	json.NewEncoder(w).Encode(response)
+}
+
+func (h httpDeckHandler) updateDeck(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	decoder := json.NewDecoder(r.Body)
+
+	var req deck.RequestDeck
+	err := decoder.Decode(&req)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode("Error unmarshalling request body")
+		return
+	}
+
+	deck := new(deck.Deck)
+	newDeck, err := deck.UpdateDeck(req)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode("Error updating new deck")
+		return
+	}
+
+	response := struct {
+		ID          string      `json:"id"`
+		Name        string      `json:"name"`
+		Theme       string      `json:"theme"`
+		CardsLength int         `json:"cardsLength"`
+		Cards       []card.Card `json:"cards"`
+	}{
+		ID:          newDeck.ID,
+		Name:        newDeck.Name,
+		Theme:       newDeck.Theme,
+		CardsLength: newDeck.CardsLength,
+		Cards:       []card.Card{},
+	}
+
+	for _, card := range newDeck.Cards {
+		response.Cards = append(response.Cards, *card)
+	}
+
+	json.NewEncoder(w).Encode(response)
 }

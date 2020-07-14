@@ -97,40 +97,40 @@ func Test_Cards_ABM(t *testing.T) {
 
 func Test_Decks_ABM(t *testing.T) {
 
-	deck := new(deck.Deck)
-	deck.Name = "Test"
-	deck.Theme = "Test"
-	deck.Cards = make(map[string]*card.Card)
+	dk := new(deck.Deck)
+	dk.Name = "Test"
+	dk.Theme = "Test"
+	dk.Cards = make(map[string]*card.Card)
 	card := new(card.Card)
 	cards, err := card.GetCards()
 	if err != nil {
-		t.Errorf("ABM Deck -> getting cards Error: %v", err)
+		t.Errorf("ABM deck -> getting cards Error: %v", err)
 	}
 
 	for i := 0; i < 10; i++ {
-		deck.Cards[cards[i].ID] = &cards[i]
+		dk.Cards[cards[i].ID] = &cards[i]
 	}
 
 	t.Run("GET DECKS", func(t *testing.T) {
-		decks, err := deck.GetDecks()
+		decks, err := dk.GetDecks()
 		if err != nil {
 			t.Errorf("Error getting Decks: %v", err)
 		}
 
 		for _, dbdeck := range decks {
-			if reflect.TypeOf(dbdeck) != reflect.TypeOf(*deck) {
+			if reflect.TypeOf(dbdeck) != reflect.TypeOf(*dk) {
 				t.Errorf("Getting Decks, Type error")
 			}
 		}
 	})
 
 	t.Run("GET DECKS WITH CARDS", func(t *testing.T) {
-		decks, err := deck.GetDecksWithCards()
+		decks, err := dk.GetDecksWithCards()
 		if err != nil {
 			t.Errorf("Error getting Decks With Cards: %v", err)
 		}
 		for _, dbdeck := range decks {
-			if reflect.TypeOf(dbdeck) != reflect.TypeOf(*deck) {
+			if reflect.TypeOf(dbdeck) != reflect.TypeOf(*dk) {
 				t.Errorf("Getting Decks with cards, Type error")
 			}
 		}
@@ -138,9 +138,20 @@ func Test_Decks_ABM(t *testing.T) {
 
 	t.Run("NEW DECK", func(t *testing.T) {
 
-		newDeck, err := deck.NewDeck(*deck)
+		reqDeck := deck.RequestDeck{
+			"",
+			dk.Name,
+			dk.Theme,
+			0,
+			[]string{},
+		}
+		for keyCard := range dk.Cards {
+			reqDeck.Cards = append(reqDeck.Cards, keyCard)
+		}
+
+		newDeck, err := dk.NewDeck(reqDeck)
 		if err != nil {
-			t.Errorf("Creating Deck Error: %v", err)
+			t.Errorf("Creating deck Error: %v", err)
 		}
 
 		_, err = primitive.ObjectIDFromHex(newDeck.ID)
@@ -163,14 +174,14 @@ func Test_Decks_ABM(t *testing.T) {
 			}
 		}
 
-		deck = newDeck
+		dk = newDeck
 	})
 
 	t.Run("GET DECK", func(t *testing.T) {
-		deckFound, err := deck.GetDeck(deck.ID)
-		fmt.Println(deckFound)
+		deckFound, err := dk.GetDeck(dk.ID)
+
 		if err != nil {
-			t.Errorf("Deck getting Error: %v", err)
+			t.Errorf("deck getting Error: %v", err)
 		}
 
 		if reflect.TypeOf(deckFound.Name).Kind() != reflect.String {
@@ -188,17 +199,27 @@ func Test_Decks_ABM(t *testing.T) {
 			}
 		}
 
-		if !cmp.Equal(deckFound, deck) {
-			t.Errorf("Deck found is not equal to expect")
+		if !cmp.Equal(deckFound, dk) {
+			t.Errorf("deck found is not equal to expect")
 		}
 	})
 
 	t.Run("UPDATE DECK", func(t *testing.T) {
-		deck.Name = "Testing"
-		deck.Theme = "Testing"
-		updatedDeck, err := deck.UpdateDeck(*deck)
+
+		reqDeck := deck.RequestDeck{
+			dk.ID,
+			"Testing",
+			"Testing",
+			dk.CardsLength,
+			[]string{},
+		}
+		for keyCard := range dk.Cards {
+			reqDeck.Cards = append(reqDeck.Cards, keyCard)
+		}
+
+		updatedDeck, err := dk.UpdateDeck(reqDeck)
 		if err != nil {
-			t.Errorf("Updating Deck Error : %v", err)
+			t.Errorf("Updating deck Error : %v", err)
 		}
 		if reflect.TypeOf(updatedDeck.Name).Kind() != reflect.String {
 			t.Errorf("get deck field Error")
@@ -214,15 +235,17 @@ func Test_Decks_ABM(t *testing.T) {
 				t.Errorf("get deck, card field Error")
 			}
 		}
-		if !cmp.Equal(updatedDeck, deck) {
+		dk.Name = "Testing"
+		dk.Theme = "Testing"
+		if !cmp.Equal(updatedDeck, dk) {
 			t.Errorf("Updated deck is not equal to request deck")
 		}
 	})
 
 	t.Run("DELETE DECK", func(t *testing.T) {
-		err := deck.DeleteDeck(*deck)
+		err := dk.DeleteDeck(*dk)
 		if err != nil {
-			t.Errorf("Removing Deck Error : %v", err)
+			t.Errorf("Removing deck Error : %v", err)
 		}
 	})
 

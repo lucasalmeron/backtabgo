@@ -8,7 +8,7 @@ type Card struct {
 	ForbiddenWords []string `json:"forbiddenWords" bson:"forbiddenWords"`
 }
 
-type CardRepository interface {
+type Repository interface {
 	GetCards(ctx context.Context) ([]Card, error)
 	GetCard(ctx context.Context, cardID string) (*Card, error)
 	NewCard(ctc context.Context, card Card) (*Card, error)

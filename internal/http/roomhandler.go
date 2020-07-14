@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
-	"path/filepath"
 	"runtime"
 
 	"github.com/google/uuid"
@@ -14,22 +12,23 @@ import (
 	gameroom "github.com/lucasalmeron/backtabgo/pkg/gameRoom"
 )
 
-type httpHandler struct{}
+type httpRoomHandler struct{}
 
 var (
 	upgrader  = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 	gameRooms = map[uuid.UUID]*gameroom.GameRoom{}
 )
 
-func Init(router *mux.Router) {
-	handler := new(httpHandler)
+func InitRoomHandler(router *mux.Router) {
+	handler := new(httpRoomHandler)
 
-	router.Path("/createroom").HandlerFunc(handler.createRoom).Methods(http.MethodGet, http.MethodOptions)
-	router.Path("/joinroom/{gameroom}").HandlerFunc(handler.joinRoom)
-	router.Path("/reconnectroom/{gameroom}/{playerid}").HandlerFunc(handler.reconnect)
+	router.Path("/room/new").HandlerFunc(handler.createRoom).Methods(http.MethodGet, http.MethodOptions)
+	router.Path("/room/join/{gameroom}").HandlerFunc(handler.joinRoom)
+	router.Path("/room/reconnect/{gameroom}/{playerid}").HandlerFunc(handler.reconnect)
 }
 
-type spaHandler struct {
+///serve static for SPA code///
+/*type spaHandler struct {
 	StaticPath string
 	IndexPath  string
 }
@@ -53,9 +52,9 @@ func (h spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.FileServer(http.Dir(h.StaticPath)).ServeHTTP(w, r)
-}
+}*/
 
-func (h httpHandler) createRoom(w http.ResponseWriter, r *http.Request) {
+func (h httpRoomHandler) createRoom(w http.ResponseWriter, r *http.Request) {
 
 	gameRoom := gameroom.NewGameRoom()
 
@@ -85,7 +84,7 @@ func (h httpHandler) createRoom(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (h httpHandler) joinRoom(w http.ResponseWriter, r *http.Request) {
+func (h httpRoomHandler) joinRoom(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println("WebSocket Endpoint Hit")
 	gameRoomID := mux.Vars(r)["gameroom"]
@@ -108,7 +107,7 @@ func (h httpHandler) joinRoom(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (h httpHandler) reconnect(w http.ResponseWriter, r *http.Request) {
+func (h httpRoomHandler) reconnect(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println("WebSocket Reconnect Hit")
 	gameRoomID := mux.Vars(r)["gameroom"]

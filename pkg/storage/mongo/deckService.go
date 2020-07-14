@@ -17,7 +17,7 @@ type DeckService struct {
 	collection *mongo.Collection
 }
 
-func NewDeckService(db *mongo.Database) deck.DeckRepository {
+func NewDeckService(db *mongo.Database) deck.Repository {
 	return &DeckService{db, db.Collection("decks")}
 }
 
@@ -151,12 +151,12 @@ func (service *DeckService) GetDeck(ctx context.Context, deckID string) (*deck.D
 
 }
 
-func (service *DeckService) NewDeck(ctx context.Context, deck deck.Deck) (*deck.Deck, error) {
+func (service *DeckService) NewDeck(ctx context.Context, deck deck.RequestDeck) (*deck.Deck, error) {
 
 	var cards []primitive.ObjectID
 
-	for cardKey := range deck.Cards {
-		objectID, err := primitive.ObjectIDFromHex(cardKey)
+	for _, cardID := range deck.Cards {
+		objectID, err := primitive.ObjectIDFromHex(cardID)
 		if err != nil {
 			return nil, err
 		}
@@ -178,11 +178,11 @@ func (service *DeckService) NewDeck(ctx context.Context, deck deck.Deck) (*deck.
 	if err != nil {
 		return nil, err
 	}
-	deck = *dbDeck
-	return &deck, nil
+
+	return dbDeck, nil
 }
 
-func (service *DeckService) UpdateDeck(ctx context.Context, reqDeck deck.Deck) (*deck.Deck, error) {
+func (service *DeckService) UpdateDeck(ctx context.Context, reqDeck deck.RequestDeck) (*deck.Deck, error) {
 
 	objectID, err := primitive.ObjectIDFromHex(reqDeck.ID)
 	if err != nil {
@@ -192,8 +192,8 @@ func (service *DeckService) UpdateDeck(ctx context.Context, reqDeck deck.Deck) (
 
 	var cards []primitive.ObjectID
 
-	for cardKey := range reqDeck.Cards {
-		objectID, err := primitive.ObjectIDFromHex(cardKey)
+	for _, cardID := range reqDeck.Cards {
+		objectID, err := primitive.ObjectIDFromHex(cardID)
 		if err != nil {
 			return nil, err
 		}
