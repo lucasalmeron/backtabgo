@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/gorilla/mux"
 	httphandler "github.com/lucasalmeron/backtabgo/internal/http"
 	mongostorage "github.com/lucasalmeron/backtabgo/pkg/storage/mongo"
 )
@@ -37,8 +38,12 @@ func main() {
 		log.Fatal("MongoDb Connection Error: ", err)
 	}
 
+	router := mux.NewRouter().StrictSlash(true)
+	httphandler.Init(router)
+	httphandler.InitDeckHandler(router)
+
 	srv := &http.Server{
-		Handler: httphandler.Init(),
+		Handler: router,
 		Addr:    addr,
 		// Good practice: enforce timeouts for servers you create!
 		WriteTimeout:   15 * time.Second,

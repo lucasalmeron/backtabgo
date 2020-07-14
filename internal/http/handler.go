@@ -11,28 +11,22 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
-	card "github.com/lucasalmeron/backtabgo/pkg/cards"
-	deck "github.com/lucasalmeron/backtabgo/pkg/decks"
 	gameroom "github.com/lucasalmeron/backtabgo/pkg/gameRoom"
 )
 
 type httpHandler struct{}
 
 var (
-	router    *mux.Router
 	upgrader  = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 	gameRooms = map[uuid.UUID]*gameroom.GameRoom{}
 )
 
-func Init() *mux.Router {
+func Init(router *mux.Router) {
 	handler := new(httpHandler)
-	router = mux.NewRouter().StrictSlash(true)
+
 	router.Path("/createroom").HandlerFunc(handler.createRoom).Methods(http.MethodGet, http.MethodOptions)
 	router.Path("/joinroom/{gameroom}").HandlerFunc(handler.joinRoom)
 	router.Path("/reconnectroom/{gameroom}/{playerid}").HandlerFunc(handler.reconnect)
-
-	router.Path("/getdecks").HandlerFunc(handler.getDecks).Methods(http.MethodGet, http.MethodOptions)
-	return router
 }
 
 type spaHandler struct {
@@ -144,34 +138,4 @@ func (h httpHandler) reconnect(w http.ResponseWriter, r *http.Request) {
 		}
 
 	}
-}
-
-func (h httpHandler) getDecks(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-
-	deckRepository := new(deck.Deck)
-	dbDecks, err := deckRepository.GetDecksWithCards()
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode("db error")
-		return
-	}
-	type deck struct {
-		ID          string      `json:"id"`
-		Name        string      `json:"name"`
-		Theme       string      `json:"theme"`
-		CardsLength int         `json:"cardsLength"`
-		Cards       []card.Card `json:"cards"`
-	}
-	var decks []deck
-	for _, dbDeck := range dbDecks {
-		deck := deck{dbDeck.ID, dbDeck.Name, dbDeck.Theme, dbDeck.CardsLength, []card.Card{}}
-		for _, card := range dbDeck.Cards {
-			deck.Cards = append(deck.Cards, *card)
-		}
-		decks = append(decks, deck)
-	}
-
-	json.NewEncoder(w).Encode(decks)
 }
