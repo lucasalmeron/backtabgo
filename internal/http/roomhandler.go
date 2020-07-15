@@ -12,6 +12,11 @@ import (
 	gameroom "github.com/lucasalmeron/backtabgo/pkg/gameRoom"
 )
 
+type httpError struct {
+	Status  int    `json:"status"`
+	Message string `json:"message"`
+}
+
 type httpRoomHandler struct{}
 
 var (
@@ -55,6 +60,8 @@ func (h spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }*/
 
 func (h httpRoomHandler) createRoom(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	gameRoom := gameroom.NewGameRoom()
 
@@ -62,12 +69,7 @@ func (h httpRoomHandler) createRoom(w http.ResponseWriter, r *http.Request) {
 	gameRooms[gameRoom.ID] = gameRoom
 	gameRoom.Mutex.Unlock()
 
-	var response struct {
-		GameRoomID string `json:"gameRoomID"`
-	}
-	response.GameRoomID = gameRoom.ID.String()
-
-	fmt.Println("Goroutines start room -> ", gameRoom.ID, " --> ", runtime.NumGoroutine())
+	fmt.Println("Goroutines new room -> ", gameRoom.ID, " --> ", runtime.NumGoroutine())
 
 	//this goroutine wait for gameEnded and pop gameRoom of array
 	go func() {
@@ -75,16 +77,18 @@ func (h httpRoomHandler) createRoom(w http.ResponseWriter, r *http.Request) {
 		gameRoom.Mutex.Lock()
 		delete(gameRooms, gameRoom.ID)
 		gameRoom.Mutex.Unlock()
-		fmt.Println("Goroutines close room -> ", gameRoom.ID, " --> ", runtime.NumGoroutine())
+		fmt.Println("Goroutines closed room -> ", gameRoom.ID, " --> ", runtime.NumGoroutine())
 	}()
 
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(struct {
+		GameRoomID string `json:"gameRoomID"`
+	}{gameRoom.ID.String()})
 
 }
 
 func (h httpRoomHandler) joinRoom(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	fmt.Println("WebSocket Endpoint Hit")
 	gameRoomID := mux.Vars(r)["gameroom"]
@@ -92,22 +96,30 @@ func (h httpRoomHandler) joinRoom(w http.ResponseWriter, r *http.Request) {
 	key, err := uuid.Parse(gameRoomID)
 	if err != nil {
 		fmt.Fprintf(w, "%+v\n", err)
+		json.NewEncoder(w).Encode(&httpError{http.StatusInternalServerError, err.Error()})
 		return
 	}
 	if gameRoom, ok := gameRooms[key]; ok {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			fmt.Fprintf(w, "%+v\n", err)
+			json.NewEncoder(w).Encode(&httpError{http.StatusInternalServerError, err.Error()})
+			return
 		}
 
 		//Here it will wait for incomming messages
 		gameRoom.AddPlayer(conn)
 
+	} else {
+		json.NewEncoder(w).Encode(&httpError{http.StatusBadRequest, "Game Room doesn't exist"})
+		return
 	}
 
 }
 
 func (h httpRoomHandler) reconnect(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	fmt.Println("WebSocket Reconnect Hit")
 	gameRoomID := mux.Vars(r)["gameroom"]
@@ -116,11 +128,13 @@ func (h httpRoomHandler) reconnect(w http.ResponseWriter, r *http.Request) {
 	roomKey, err := uuid.Parse(gameRoomID)
 	if err != nil {
 		fmt.Fprintf(w, "%+v\n", err)
+		json.NewEncoder(w).Encode(&httpError{http.StatusInternalServerError, err.Error()})
 		return
 	}
 	playerKey, err := uuid.Parse(playerID)
 	if err != nil {
 		fmt.Fprintf(w, "%+v\n", err)
+		json.NewEncoder(w).Encode(&httpError{http.StatusInternalServerError, err.Error()})
 		return
 	}
 
@@ -130,11 +144,16 @@ func (h httpRoomHandler) reconnect(w http.ResponseWriter, r *http.Request) {
 			conn, err := upgrader.Upgrade(w, r, nil)
 			if err != nil {
 				fmt.Fprintf(w, "%+v\n", err)
+				json.NewEncoder(w).Encode(&httpError{http.StatusInternalServerError, err.Error()})
+				return
 			}
 
 			//Here it will wait for incomming messages
 			gameRoom.ReconnectPlayer(conn, player)
 		}
 
+	} else {
+		json.NewEncoder(w).Encode(&httpError{http.StatusBadRequest, "Game Room doesn't exist"})
+		return
 	}
 }

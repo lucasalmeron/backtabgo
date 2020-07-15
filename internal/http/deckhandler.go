@@ -31,7 +31,7 @@ func (h httpDeckHandler) getDecks(w http.ResponseWriter, r *http.Request) {
 	dbDecks, err := deckRepository.GetDecksWithCards()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode("db error")
+		json.NewEncoder(w).Encode(&httpError{http.StatusInternalServerError, "db error"})
 		return
 	}
 	type deck struct {
@@ -63,7 +63,7 @@ func (h httpDeckHandler) getDeck(w http.ResponseWriter, r *http.Request) {
 	dbDeck, err := deckRepository.GetDeck(deckID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode("db error")
+		json.NewEncoder(w).Encode(&httpError{http.StatusInternalServerError, "db error"})
 		return
 	}
 
@@ -80,7 +80,7 @@ func (h httpDeckHandler) newDeck(w http.ResponseWriter, r *http.Request) {
 	err := decoder.Decode(&req)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode("Error unmarshalling request body")
+		json.NewEncoder(w).Encode(&httpError{http.StatusInternalServerError, "Error unmarshalling request body"})
 		return
 	}
 
@@ -89,7 +89,7 @@ func (h httpDeckHandler) newDeck(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode("Error creating new deck")
+		json.NewEncoder(w).Encode(&httpError{http.StatusInternalServerError, "Error creating new deck"})
 		return
 	}
 
@@ -124,7 +124,7 @@ func (h httpDeckHandler) updateDeck(w http.ResponseWriter, r *http.Request) {
 	err := decoder.Decode(&req)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode("Error unmarshalling request body")
+		json.NewEncoder(w).Encode(&httpError{http.StatusInternalServerError, "Error unmarshalling request body"})
 		return
 	}
 
@@ -133,7 +133,7 @@ func (h httpDeckHandler) updateDeck(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode("Error updating new deck")
+		json.NewEncoder(w).Encode(&httpError{http.StatusInternalServerError, "Error updating deck"})
 		return
 	}
 

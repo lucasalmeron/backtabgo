@@ -2,6 +2,7 @@ package httphandler
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -30,7 +31,7 @@ func (h httpDeckHandler) getCards(w http.ResponseWriter, r *http.Request) {
 	dbCards, err := cardRepository.GetCards()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode("db error")
+		json.NewEncoder(w).Encode(&httpError{http.StatusInternalServerError, "db error"})
 		return
 	}
 
@@ -47,7 +48,7 @@ func (h httpDeckHandler) getCard(w http.ResponseWriter, r *http.Request) {
 	dbCard, err := cardRepository.GetCard(cardID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode("db error")
+		json.NewEncoder(w).Encode(&httpError{http.StatusInternalServerError, "db error"})
 		return
 	}
 
@@ -60,20 +61,26 @@ func (h httpDeckHandler) newCard(w http.ResponseWriter, r *http.Request) {
 
 	decoder := json.NewDecoder(r.Body)
 
-	var req card.Card
-	err := decoder.Decode(&req)
-	if err != nil {
+	var card card.Card
+
+	if err := decoder.Decode(&card); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode("Error unmarshalling request body")
+		json.NewEncoder(w).Encode(&httpError{http.StatusInternalServerError, "Error unmarshalling request body"})
 		return
 	}
 
-	card := new(card.Card)
-	newCard, err := card.NewCard(req)
+	if err := card.Validate(); err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(&httpError{http.StatusInternalServerError, err.Error()})
+		return
+	}
+
+	newCard, err := card.NewCard(card)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode("Error creating new card")
+		json.NewEncoder(w).Encode(&httpError{http.StatusInternalServerError, "Error creating new card"})
 		return
 	}
 
@@ -86,22 +93,28 @@ func (h httpDeckHandler) updateCard(w http.ResponseWriter, r *http.Request) {
 
 	decoder := json.NewDecoder(r.Body)
 
-	var req card.Card
-	err := decoder.Decode(&req)
-	if err != nil {
+	var card card.Card
+
+	if err := decoder.Decode(&card); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode("Error unmarshalling request body")
+		json.NewEncoder(w).Encode(&httpError{http.StatusInternalServerError, "Error unmarshalling request body"})
 		return
 	}
 
-	card := new(card.Card)
-	newCard, err := card.UpdateCard(req)
+	if err := card.Validate(); err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(&httpError{http.StatusInternalServerError, err.Error()})
+		return
+	}
+
+	updatedCard, err := card.UpdateCard(card)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode("Error updating new deck")
+		json.NewEncoder(w).Encode(&httpError{http.StatusInternalServerError, "Error updating deck"})
 		return
 	}
 
-	json.NewEncoder(w).Encode(newCard)
+	json.NewEncoder(w).Encode(updatedCard)
 }
