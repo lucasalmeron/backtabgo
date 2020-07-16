@@ -1,0 +1,18 @@
+version: "3.3"
+services:
+    game:
+        container_name: taboogame
+        image: "lucasalmeron/backtaboo"
+        build: .
+        restart: always
+        ports:
+            - "3500:3500"
+        links:
+            - mongo
+
+    mongo:
+        container_name: mongodb
+        image: mongo
+        restart: always
+        ports:
+            - "27015:27017"
