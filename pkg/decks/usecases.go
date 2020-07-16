@@ -1,11 +1,46 @@
 package deck
 
-import "context"
+import (
+	"context"
+	"fmt"
+	"reflect"
+)
 
 var repository Repository
 
 func SetRepository(repo Repository) {
 	repository = repo
+}
+
+func (deck *Deck) Validate() error {
+	if deck.Name == "" {
+		return fmt.Errorf("Field Name is missing")
+	}
+	if deck.Theme == "" {
+		return fmt.Errorf("Field Theme is missing")
+	}
+
+	if reflect.TypeOf(deck.Name).Kind() != reflect.String {
+		return fmt.Errorf("Name must be a string")
+	}
+	if reflect.TypeOf(deck.Theme).Kind() != reflect.String {
+		return fmt.Errorf("Theme must be a string")
+	}
+	if len(deck.Name) <= 2 || len(deck.Name) >= 30 {
+		return fmt.Errorf("Name must be at least 2 characters long and not exceed 30 characters")
+	}
+	if len(deck.Theme) <= 2 || len(deck.Theme) >= 30 {
+		return fmt.Errorf("Theme must be at least 2 characters long and not exceed 30 characters")
+	}
+	if reflect.TypeOf(deck.Cards).Kind() != reflect.Slice {
+		return fmt.Errorf("Cards must be an array")
+	}
+	for _, card := range deck.Cards {
+		if reflect.TypeOf(card).Kind() != reflect.String {
+			return fmt.Errorf("Card must be a string")
+		}
+	}
+	return nil
 }
 
 func (deck *Deck) GetDecks() ([]Deck, error) {

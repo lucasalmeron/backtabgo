@@ -38,10 +38,10 @@ type GameRoom struct {
 	CurrentCard              *card.Card                   `json:"-"`
 	GameStatus               string                       `json:"gameStatus"`
 	Settings                 *GameSettings                `json:"settings"`
-	gameChannel              chan bool                    `json:"-"`
-	PlayerConnectedChannel   chan player.Player           `json:"-"`
-	IncommingMessagesChannel chan player.Message          `json:"-"`
-	Wg                       sync.WaitGroup               `json:"-"`
+	gameChannel              chan bool
+	PlayerConnectedChannel   chan player.Player  `json:"-"`
+	IncommingMessagesChannel chan player.Message `json:"-"`
+	Wg                       sync.WaitGroup      `json:"-"`
 	closePlayersWg           sync.WaitGroup
 	Mutex                    sync.Mutex `json:"-"`
 }

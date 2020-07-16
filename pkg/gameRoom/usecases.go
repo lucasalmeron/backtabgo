@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/rand"
 	"reflect"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -207,8 +206,6 @@ func (gameRoom *GameRoom) StartGame() {
 		gameRoom.Mutex.Unlock()
 		//broadcast Next Player Turn
 		gameRoom.sendMessage("broadcastNextPlayerTurn", gameRoom.CurrentTurn, uuid.UUID{})
-
-		fmt.Println("Goroutines OnGame room -> ", gameRoom.ID, " --> ", runtime.NumGoroutine())
 
 		fmt.Println("waiting for take a card...")
 		chanValue := <-gameRoom.gameChannel

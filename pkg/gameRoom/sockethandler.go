@@ -15,7 +15,7 @@ type SocketRequest struct {
 	gameRoom *GameRoom
 }
 
-//Route classify the incomming message and call the appropiate function
+//Route classifies the incomming message and call the appropiate function
 func (req *SocketRequest) Route() {
 	switch req.message.Action {
 	case "startGame":
