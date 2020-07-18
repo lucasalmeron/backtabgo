@@ -343,6 +343,14 @@ func (req *SocketRequest) updateRoomOptions() {
 		json.Unmarshal(j, &output)
 		//parsing map[string] interface{} to struct
 
+		if len(output.Decks) == 0 {
+			req.message.Data = "you must send at least one deck"
+			for _, player := range req.gameRoom.Players {
+				player.Write(req.message)
+			}
+			return
+		}
+
 		//req.gameRoom.Settings.GameTime = output.GameTime
 		if output.TurnTime > 0 {
 			req.gameRoom.Settings.TurnTime = output.TurnTime
@@ -377,7 +385,6 @@ func (req *SocketRequest) updateRoomOptions() {
 		//broadcast Options
 		for _, player := range req.gameRoom.Players {
 			player.Write(req.message)
-
 		}
 	}
 }
