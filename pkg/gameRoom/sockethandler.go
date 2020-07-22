@@ -84,7 +84,7 @@ func (req *SocketRequest) playTurn() {
 		req.gameRoom.PlayTurn()
 
 		//broadcast gamestatus and give a new card to player
-		req.message.Action = "startTurn"
+		req.message.Action = "turnStarted"
 		req.message.Data = req.gameRoom
 		for _, player := range req.gameRoom.Players {
 			player.Write(req.message)
@@ -367,6 +367,9 @@ func (req *SocketRequest) updateRoomOptions() {
 		if err != nil {
 			req.message.Data = "db error"
 		}
+
+		//clean map
+		req.gameRoom.Settings.Decks = map[string]*deck.Deck{}
 
 		totalCards := 0
 		for _, reqDeckID := range output.Decks {

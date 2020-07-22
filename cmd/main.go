@@ -17,10 +17,40 @@ import (
 var (
 	mongoURI      = os.Getenv("MONGODB_URI")
 	mongoDataBase = os.Getenv("MONGODB_DB")
-	addr          = ":" + os.Getenv("PORT")
 )
 
-func main() {
+type Server struct {
+	srv    *http.Server
+	router *mux.Router
+	addr   string
+}
+
+func (srv *Server) Init() {
+
+	srv.addr = ":" + os.Getenv("PORT")
+
+	if os.Getenv("PORT") == "" {
+		srv.addr = "127.0.0.1:3500"
+	}
+
+	srv.router = mux.NewRouter().StrictSlash(true)
+
+	// Only matches if domain is "www.example.com".
+	//router.Host("www.example.com")
+	httphandler.InitRoomHandler(srv.router)
+	httphandler.InitDeckHandler(srv.router)
+	httphandler.InitCardHandler(srv.router)
+
+	srv.srv = &http.Server{
+		Handler:        srv.router,
+		Addr:           srv.addr,
+		WriteTimeout:   15 * time.Second,
+		ReadTimeout:    15 * time.Second,
+		MaxHeaderBytes: 1 << 20, // 1 MiB
+	}
+}
+
+func (srv *Server) ConnectMongoDB() error {
 
 	if os.Getenv("MONGODB_URI") == "" {
 		mongoURI = fmt.Sprintf("mongodb://localhost:27017")
@@ -29,43 +59,21 @@ func main() {
 		mongoDataBase = "taboogame"
 	}
 
-	if os.Getenv("PORT") == "" {
-		addr = "127.0.0.1:3500"
-	}
+	return mongostorage.NewMongoDBConnection(mongoURI, mongoDataBase)
+}
 
-	err := mongostorage.NewMongoDBConnection(mongoURI, mongoDataBase)
-	if err != nil {
-		log.Fatal("MongoDb Connection Error: ", err)
-	}
+func (s *Server) StartAndListen() {
+	go s.waitForShutdown()
 
-	router := mux.NewRouter().StrictSlash(true)
-
-	// Only matches if domain is "www.example.com".
-	//router.Host("www.example.com")
-	httphandler.InitRoomHandler(router)
-	httphandler.InitDeckHandler(router)
-	httphandler.InitCardHandler(router)
-
-	srv := &http.Server{
-		Handler: router,
-		Addr:    addr,
-		// Good practice: enforce timeouts for servers you create!
-		WriteTimeout:   15 * time.Second,
-		ReadTimeout:    15 * time.Second,
-		MaxHeaderBytes: 1 << 20, // 1 MiB
-	}
-
-	go waitForShutdown(srv)
-
-	fmt.Printf("Server started on %s. CTRL+C for shutdown.\n", addr)
-	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+	fmt.Printf("Server started on %s. CTRL+C for shutdown.\n", s.addr)
+	if err := s.srv.ListenAndServe(); err != http.ErrServerClosed {
 		log.Fatal("ListenAndServe Error: ", err)
 	}
 
 	fmt.Println("Shutdown Success.")
 }
 
-func waitForShutdown(srv *http.Server) {
+func (s *Server) waitForShutdown() {
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	<-sigint
@@ -73,7 +81,15 @@ func waitForShutdown(srv *http.Server) {
 	fmt.Println("\nShutdown started...")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
+	if err := s.srv.Shutdown(ctx); err != nil {
 		log.Printf("Shutdown Error: %v", err)
 	}
+}
+
+func main() {
+
+	server := new(Server)
+	server.Init()
+	server.ConnectMongoDB()
+	server.StartAndListen()
 }

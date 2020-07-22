@@ -210,13 +210,6 @@ func (gameRoom *GameRoom) StartGame() {
 		fmt.Println("waiting for take a card...")
 		chanValue := <-gameRoom.gameChannel
 		if chanValue {
-			fmt.Println("taken card, turn in course")
-			gameRoom.Mutex.Lock()
-			turnTime := time.Now()
-			gameRoom.TurnTime = turnTime.Unix()
-
-			gameRoom.GameStatus = "turnInCourse"
-			gameRoom.Mutex.Unlock()
 			//TIME TO SEND ATTEMPS
 			time.Sleep(time.Duration(gameRoom.Settings.TurnTime) * time.Minute)
 
@@ -279,6 +272,14 @@ func (gameRoom *GameRoom) TakeCard() error {
 func (gameRoom *GameRoom) PlayTurn() {
 	//check if are minimum 2 players in each team
 	gameRoom.checkMinPlayersConnection()
+
+	fmt.Println("taken card, turn in course")
+	gameRoom.Mutex.Lock()
+	turnTime := time.Now()
+	gameRoom.TurnTime = turnTime.Unix()
+
+	gameRoom.GameStatus = "turnInCourse"
+	gameRoom.Mutex.Unlock()
 
 	err := gameRoom.TakeCard()
 	if err != nil {
