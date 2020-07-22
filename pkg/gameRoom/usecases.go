@@ -274,12 +274,10 @@ func (gameRoom *GameRoom) PlayTurn() {
 	gameRoom.checkMinPlayersConnection()
 
 	fmt.Println("taken card, turn in course")
-	gameRoom.Mutex.Lock()
 	turnTime := time.Now()
 	gameRoom.TurnTime = turnTime.Unix()
 
 	gameRoom.GameStatus = "turnInCourse"
-	gameRoom.Mutex.Unlock()
 
 	err := gameRoom.TakeCard()
 	if err != nil {
