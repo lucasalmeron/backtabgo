@@ -440,11 +440,16 @@ func (req *SocketRequest) getPlayerList() {
 
 func (req *SocketRequest) connected() {
 
+	req.message.Action = "connected"
+	req.message.Data = req.gameRoom.Players[req.message.PlayerID]
+	req.gameRoom.Players[req.message.PlayerID].Write(req.message)
+
+	req.message.Action = "gameStatus"
 	req.message.Data = req.gameRoom
 	req.gameRoom.Players[req.message.PlayerID].Write(req.message)
 
 	//broadcast new player
-	req.message.Action = "joinPlayer"
+	req.message.Action = "playerConnected"
 	req.message.Data = req.gameRoom.Players[req.message.PlayerID]
 	for _, player := range req.gameRoom.Players {
 		if player.ID != req.message.PlayerID {
@@ -454,7 +459,12 @@ func (req *SocketRequest) connected() {
 }
 
 func (req *SocketRequest) reconnected() {
-	//send reconected to player
+
+	req.message.Action = "connected"
+	req.message.Data = req.gameRoom.Players[req.message.PlayerID]
+	req.gameRoom.Players[req.message.PlayerID].Write(req.message)
+
+	req.message.Action = "gameStatus"
 	req.message.Data = req.gameRoom
 	req.gameRoom.Players[req.message.PlayerID].Write(req.message)
 

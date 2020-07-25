@@ -2,6 +2,7 @@ package mongostorage
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	card "github.com/lucasalmeron/backtabgo/pkg/cards"
@@ -19,10 +20,18 @@ type MongoDB struct {
 }
 
 func NewMongoDBConnection(mongoURI string, database string) error {
+
 	mgo = new(MongoDB)
 
 	mgo.mongoURI = mongoURI
 	mgo.database = database
+
+	if mongoURI == "" {
+		mgo.mongoURI = fmt.Sprintf("mongodb://localhost:27017")
+	}
+	if database == "" {
+		mgo.database = "taboogame"
+	}
 
 	err := mgo.connect()
 	if err != nil {
@@ -57,4 +66,8 @@ func (mongoDB *MongoDB) connect() error {
 	mongoDB.connection = client.Database(mgo.database)
 	log.Println("MongoDB connection success")
 	return nil
+}
+
+func (mongoDB *MongoDB) CloseConnection() error {
+	return mongoDB.connection.Client().Disconnect(context.TODO())
 }

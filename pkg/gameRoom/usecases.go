@@ -52,6 +52,7 @@ func NewGameRoom() *GameRoom {
 
 func (gameRoom *GameRoom) AddPlayer(conn *websocket.Conn) {
 
+	gameRoom.Mutex.Lock()
 	playerNumber := strconv.Itoa(len(gameRoom.Players) + 1)
 	player := &player.Player{
 		ID:                       uuid.New(),
@@ -78,18 +79,15 @@ func (gameRoom *GameRoom) AddPlayer(conn *websocket.Conn) {
 	}
 	if playerTeam1Count > playerTeam2Count {
 		player.Team = 2
-		gameRoom.Mutex.Lock()
 		gameRoom.PlayersTeam2 = append(gameRoom.PlayersTeam2, player)
 		gameRoom.Players[player.ID] = player
-		gameRoom.Mutex.Unlock()
 	} else {
 		player.Team = 1
-		gameRoom.Mutex.Lock()
 		gameRoom.PlayersTeam1 = append(gameRoom.PlayersTeam1, player)
 		gameRoom.Players[player.ID] = player
-		gameRoom.Mutex.Unlock()
 	}
 
+	gameRoom.Mutex.Unlock()
 	gameRoom.Wg.Add(1)
 	if gameRoom.GameStatus == "waitingMinPlayers" {
 		gameRoom.PlayerConnectedChannel <- *player
@@ -131,8 +129,9 @@ func (gameRoom *GameRoom) checkMinPlayersConnection() {
 			gameRoom.GameStatus = lastState
 			return
 		}
-		gameRoom.GameStatus = "waitingMinPlayers"
+
 		//broadcast Waiting for players
+		gameRoom.GameStatus = "waitingMinPlayers"
 		gameRoom.sendMessage("waitingForPlayers", gameRoom, uuid.UUID{})
 
 		<-gameRoom.PlayerConnectedChannel

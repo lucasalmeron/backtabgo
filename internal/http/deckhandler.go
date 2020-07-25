@@ -15,15 +15,15 @@ type httpDeckHandler struct{}
 func InitDeckHandler(router *mux.Router) {
 	handler := new(httpDeckHandler)
 
-	router.Path("/decks").HandlerFunc(handler.getDecks).Methods(http.MethodGet, http.MethodOptions)
-	router.Path("/decks/{deckID:[0-9a-fA-F]{24}}").HandlerFunc(handler.getDeck).Methods(http.MethodGet, http.MethodOptions)
+	router.Path("/decks").HandlerFunc(handler.GetDecks).Methods(http.MethodGet, http.MethodOptions)
+	router.Path("/decks/{deckID:[0-9a-fA-F]{24}}").HandlerFunc(handler.GetDeck).Methods(http.MethodGet, http.MethodOptions)
 
-	router.Path("/decks").HandlerFunc(handler.newDeck).Methods(http.MethodPost, http.MethodOptions)
-	router.Path("/decks").HandlerFunc(handler.updateDeck).Methods(http.MethodPut, http.MethodOptions)
+	router.Path("/decks").HandlerFunc(handler.NewDeck).Methods(http.MethodPost, http.MethodOptions)
+	router.Path("/decks").HandlerFunc(handler.UpdateDeck).Methods(http.MethodPut, http.MethodOptions)
 
 }
 
-func (h httpDeckHandler) getDecks(w http.ResponseWriter, r *http.Request) {
+func (h httpDeckHandler) GetDecks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
@@ -53,7 +53,7 @@ func (h httpDeckHandler) getDecks(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(decks)
 }
 
-func (h httpDeckHandler) getDeck(w http.ResponseWriter, r *http.Request) {
+func (h httpDeckHandler) GetDeck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
@@ -70,7 +70,7 @@ func (h httpDeckHandler) getDeck(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(dbDeck)
 }
 
-func (h httpDeckHandler) newDeck(w http.ResponseWriter, r *http.Request) {
+func (h httpDeckHandler) NewDeck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
@@ -114,7 +114,7 @@ func (h httpDeckHandler) newDeck(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func (h httpDeckHandler) updateDeck(w http.ResponseWriter, r *http.Request) {
+func (h httpDeckHandler) UpdateDeck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 

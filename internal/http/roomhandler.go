@@ -27,9 +27,9 @@ var (
 func InitRoomHandler(router *mux.Router) {
 	handler := new(httpRoomHandler)
 
-	router.Path("/room/new").HandlerFunc(handler.createRoom).Methods(http.MethodGet, http.MethodOptions)
-	router.Path("/room/join/{gameroom}").HandlerFunc(handler.joinRoom)
-	router.Path("/room/reconnect/{gameroom}/{playerid}").HandlerFunc(handler.reconnect)
+	router.Path("/room/new").HandlerFunc(handler.Create).Methods(http.MethodGet, http.MethodOptions)
+	router.Path("/room/join/{gameroom}").HandlerFunc(handler.Join)
+	router.Path("/room/reconnect/{gameroom}/{playerid}").HandlerFunc(handler.Reconnect)
 }
 
 ///serve static for SPA code///
@@ -59,7 +59,7 @@ func (h spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.FileServer(http.Dir(h.StaticPath)).ServeHTTP(w, r)
 }*/
 
-func (h httpRoomHandler) createRoom(w http.ResponseWriter, r *http.Request) {
+func (h httpRoomHandler) Create(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
@@ -86,7 +86,7 @@ func (h httpRoomHandler) createRoom(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (h httpRoomHandler) joinRoom(w http.ResponseWriter, r *http.Request) {
+func (h httpRoomHandler) Join(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
@@ -117,7 +117,7 @@ func (h httpRoomHandler) joinRoom(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (h httpRoomHandler) reconnect(w http.ResponseWriter, r *http.Request) {
+func (h httpRoomHandler) Reconnect(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 

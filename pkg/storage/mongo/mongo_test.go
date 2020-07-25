@@ -1,7 +1,6 @@
 package mongostorage
 
 import (
-	"fmt"
 	"os"
 	"reflect"
 	"testing"
@@ -19,12 +18,6 @@ var (
 
 func Test_MongoConnection(t *testing.T) {
 
-	if os.Getenv("MONGODB_URI") == "" {
-		mongoURI = fmt.Sprintf("mongodb://localhost:27017")
-	}
-	if os.Getenv("MONGODB_DB") == "" {
-		mongoDataBase = "taboogame"
-	}
 	err := NewMongoDBConnection(mongoURI, mongoDataBase)
 	if err != nil {
 		t.Errorf("MongoDb Connection Error: %v", err)

@@ -1,94 +1,12 @@
 package main
 
 import (
-	"context"
-	"fmt"
-	"log"
-	"net/http"
-	"os"
-	"os/signal"
-	"time"
-
-	"github.com/gorilla/mux"
-	httphandler "github.com/lucasalmeron/backtabgo/internal/http"
-	mongostorage "github.com/lucasalmeron/backtabgo/pkg/storage/mongo"
+	server "github.com/lucasalmeron/backtabgo/internal/server"
 )
-
-var (
-	mongoURI      = os.Getenv("MONGODB_URI")
-	mongoDataBase = os.Getenv("MONGODB_DB")
-)
-
-type Server struct {
-	srv    *http.Server
-	router *mux.Router
-	addr   string
-}
-
-func (srv *Server) Init() {
-
-	srv.addr = ":" + os.Getenv("PORT")
-
-	if os.Getenv("PORT") == "" {
-		srv.addr = "127.0.0.1:3500"
-	}
-
-	srv.router = mux.NewRouter().StrictSlash(true)
-
-	// Only matches if domain is "www.example.com".
-	//router.Host("www.example.com")
-	httphandler.InitRoomHandler(srv.router)
-	httphandler.InitDeckHandler(srv.router)
-	httphandler.InitCardHandler(srv.router)
-
-	srv.srv = &http.Server{
-		Handler:        srv.router,
-		Addr:           srv.addr,
-		WriteTimeout:   15 * time.Second,
-		ReadTimeout:    15 * time.Second,
-		MaxHeaderBytes: 1 << 20, // 1 MiB
-	}
-}
-
-func (srv *Server) ConnectMongoDB() error {
-
-	if os.Getenv("MONGODB_URI") == "" {
-		mongoURI = fmt.Sprintf("mongodb://localhost:27017")
-	}
-	if os.Getenv("MONGODB_DB") == "" {
-		mongoDataBase = "taboogame"
-	}
-
-	return mongostorage.NewMongoDBConnection(mongoURI, mongoDataBase)
-}
-
-func (s *Server) StartAndListen() {
-	go s.waitForShutdown()
-
-	fmt.Printf("Server started on %s. CTRL+C for shutdown.\n", s.addr)
-	if err := s.srv.ListenAndServe(); err != http.ErrServerClosed {
-		log.Fatal("ListenAndServe Error: ", err)
-	}
-
-	fmt.Println("Shutdown Success.")
-}
-
-func (s *Server) waitForShutdown() {
-	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, os.Interrupt)
-	<-sigint
-
-	fmt.Println("\nShutdown started...")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if err := s.srv.Shutdown(ctx); err != nil {
-		log.Printf("Shutdown Error: %v", err)
-	}
-}
 
 func main() {
 
-	server := new(Server)
+	server := new(server.Server)
 	server.Init()
 	server.ConnectMongoDB()
 	server.StartAndListen()
