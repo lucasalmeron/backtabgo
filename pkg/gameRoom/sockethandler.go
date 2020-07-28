@@ -345,22 +345,33 @@ func (req *SocketRequest) updateRoomOptions() {
 
 		if len(output.Decks) == 0 {
 			req.message.Data = "you must send at least one deck"
-			for _, player := range req.gameRoom.Players {
-				player.Write(req.message)
-			}
+			req.gameRoom.Players[req.message.PlayerID].Write(req.message)
 			return
 		}
 
-		//req.gameRoom.Settings.GameTime = output.GameTime
-		if output.TurnTime > 0 {
-			req.gameRoom.Settings.TurnTime = output.TurnTime
+		if output.GameTime < 5 || output.GameTime > 60 {
+			req.message.Data = "GameTime must be beetween 5 and 60 Minutes"
+			req.gameRoom.Players[req.message.PlayerID].Write(req.message)
+			return
 		}
-		if output.MaxTurnAttemps > 5 {
+		if output.TurnTime < 1 || output.TurnTime > 5 {
+			req.message.Data = "TurnTime must be beetween 1 and 5 Minutes"
+			req.gameRoom.Players[req.message.PlayerID].Write(req.message)
+			return
+		}
+		if output.MaxPoints < 1 || output.MaxPoints > 300 {
+			req.message.Data = "MaxPoints must be beetween 1 and 300 Points"
+			req.gameRoom.Players[req.message.PlayerID].Write(req.message)
+			return
+		}
+		/*if output.MaxTurnAttemps > 5 {
 			req.gameRoom.Settings.MaxTurnAttemps = output.MaxTurnAttemps
-		}
-		if output.MaxPoints > 1 {
-			req.gameRoom.Settings.MaxPoints = output.MaxPoints
-		}
+		}*/
+
+		req.gameRoom.Settings.GameTime = output.GameTime
+		req.gameRoom.Settings.TurnTime = output.TurnTime
+		req.gameRoom.Settings.MaxPoints = output.MaxPoints
+		//req.gameRoom.Settings.MaxTurnAttemps = output.MaxTurnAttemps
 
 		deckService := new(deck.Deck)
 		dbDecks, err := deckService.GetDecksWithCards()
@@ -441,7 +452,13 @@ func (req *SocketRequest) getPlayerList() {
 func (req *SocketRequest) connected() {
 
 	req.message.Action = "connected"
-	req.message.Data = req.gameRoom.Players[req.message.PlayerID]
+	req.message.Data = struct {
+		Player     *player.Player `json:"player"`
+		GameRoomID uuid.UUID      `json:"gameRoomID"`
+	}{
+		Player:     req.gameRoom.Players[req.message.PlayerID],
+		GameRoomID: req.gameRoom.ID,
+	}
 	req.gameRoom.Players[req.message.PlayerID].Write(req.message)
 
 	req.message.Action = "gameStatus"
@@ -461,7 +478,13 @@ func (req *SocketRequest) connected() {
 func (req *SocketRequest) reconnected() {
 
 	req.message.Action = "connected"
-	req.message.Data = req.gameRoom.Players[req.message.PlayerID]
+	req.message.Data = struct {
+		Player     *player.Player `json:"player"`
+		GameRoomID uuid.UUID      `json:"gameRoomID"`
+	}{
+		Player:     req.gameRoom.Players[req.message.PlayerID],
+		GameRoomID: req.gameRoom.ID,
+	}
 	req.gameRoom.Players[req.message.PlayerID].Write(req.message)
 
 	req.message.Action = "gameStatus"

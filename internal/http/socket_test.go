@@ -177,7 +177,7 @@ func handleSocketMessages(message *player.Message, playerSocket *websocket.Conn,
 			})
 		})
 	case "nextPlayerTurn":
-		//t.Logf("nxtTurn: %v", message.Data)
+		t.Logf("nxtTurn: %v", message.Data)
 	default:
 		//t.Logf("OTHER EVENT: %v", message)
 	}

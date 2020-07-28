@@ -1,6 +1,7 @@
 package gameroom
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -13,6 +14,10 @@ import (
 	"github.com/gorilla/websocket"
 	deck "github.com/lucasalmeron/backtabgo/pkg/decks"
 	player "github.com/lucasalmeron/backtabgo/pkg/players"
+)
+
+var (
+	gameTimeOut = false
 )
 
 //util
@@ -139,11 +144,27 @@ func (gameRoom *GameRoom) checkMinPlayersConnection() {
 }
 
 func (gameRoom *GameRoom) setNextPlayer(currentIndex1 *int, currentIndex2 *int) {
-	if gameRoom.TeamTurn == 1 {
+	if gameRoom.TeamTurn == 2 {
 		for {
-			if gameRoom.PlayersTeam1[*currentIndex1].Status == "connected" {
+			if gameRoom.PlayersTeam1[*currentIndex1].Status != "connected" {
+				if len(gameRoom.PlayersTeam1)-1 == *currentIndex1 {
+					*currentIndex1 = 0
+				} else {
+					*currentIndex1++
+				}
+			} else {
 				gameRoom.CurrentTurn = gameRoom.PlayersTeam1[*currentIndex1]
-				gameRoom.TeamTurn = 2
+				gameRoom.TeamTurn = 1
+				if len(gameRoom.PlayersTeam1)-1 == *currentIndex1 {
+					*currentIndex1 = 0
+				} else {
+					*currentIndex1++
+				}
+				break
+			}
+			/*if gameRoom.PlayersTeam1[*currentIndex1].Status == "connected" {
+				gameRoom.CurrentTurn = gameRoom.PlayersTeam1[*currentIndex1]
+				gameRoom.TeamTurn = 1
 				if len(gameRoom.PlayersTeam1)-1 == *currentIndex1 {
 					*currentIndex1 = 0
 				} else {
@@ -155,24 +176,25 @@ func (gameRoom *GameRoom) setNextPlayer(currentIndex1 *int, currentIndex2 *int) 
 				*currentIndex1 = 0
 			} else {
 				*currentIndex1++
-			}
+			}*/
 		}
 	} else {
 		for {
-			if gameRoom.PlayersTeam1[*currentIndex2].Status == "connected" {
+			if gameRoom.PlayersTeam1[*currentIndex2].Status != "connected" {
+				if len(gameRoom.PlayersTeam2)-1 == *currentIndex2 {
+					*currentIndex2 = 0
+				} else {
+					*currentIndex2++
+				}
+			} else {
 				gameRoom.CurrentTurn = gameRoom.PlayersTeam2[*currentIndex2]
-				gameRoom.TeamTurn = 1
+				gameRoom.TeamTurn = 2
 				if len(gameRoom.PlayersTeam2)-1 == *currentIndex2 {
 					*currentIndex2 = 0
 				} else {
 					*currentIndex2++
 				}
 				break
-			}
-			if len(gameRoom.PlayersTeam2)-1 == *currentIndex2 {
-				*currentIndex2 = 0
-			} else {
-				*currentIndex2++
 			}
 		}
 	}
@@ -185,6 +207,14 @@ func (gameRoom *GameRoom) StartGame() {
 	//set game time
 	gameTime := time.Now()
 	gameRoom.GameTime = gameTime.Unix()
+
+	//wait gametime and force end
+	go func() {
+		time.Sleep(time.Duration(gameRoom.GameTime) * time.Minute)
+		gameRoom.Mutex.Lock()
+		gameTimeOut = true
+		gameRoom.Mutex.Unlock()
+	}()
 	defer func() {
 		close(gameRoom.PlayerConnectedChannel)
 		close(gameRoom.gameChannel)
@@ -192,6 +222,23 @@ func (gameRoom *GameRoom) StartGame() {
 		gameRoom.Wg.Done()
 	}()
 	for {
+		//Check end game conditions
+		gameRoom.Mutex.Lock()
+		if gameRoom.Settings.MaxPoints <= gameRoom.Team1Score ||
+			gameRoom.Settings.MaxPoints <= gameRoom.Team2Score ||
+			gameRoom.TotalCards == 0 ||
+			gameTimeOut {
+
+			gameRoom.GameStatus = "gameEnded"
+
+			gameRoom.Mutex.Unlock()
+			//broadcast game is end
+			gameRoom.sendMessage("gameEnded", gameRoom, uuid.UUID{})
+
+			break
+		}
+		gameRoom.Mutex.Unlock()
+
 		//check if are minimum 2 players in each team
 		gameRoom.checkMinPlayersConnection()
 
@@ -214,19 +261,6 @@ func (gameRoom *GameRoom) StartGame() {
 
 			fmt.Println("END TURN")
 		}
-
-		gameRoom.Mutex.Lock()
-		if gameRoom.Settings.MaxPoints <= gameRoom.Team1Score || gameRoom.Settings.MaxPoints <= gameRoom.Team2Score || gameRoom.TotalCards == 0 {
-
-			gameRoom.GameStatus = "gameEnded"
-
-			gameRoom.Mutex.Unlock()
-			//broadcast game is end
-			gameRoom.sendMessage("gameEnded", gameRoom, uuid.UUID{})
-
-			break
-		}
-		gameRoom.Mutex.Unlock()
 	}
 	for _, player := range gameRoom.Players {
 		gameRoom.closePlayersWg.Add(1)
@@ -315,12 +349,38 @@ func (gameRoom *GameRoom) sendMessage(action string, message interface{}, trigge
 	gameRoom.Mutex.Unlock()
 }
 
+func (gameRoom *GameRoom) timeOutGame(timeOutChannel chan bool) {
+	sctx, cancelTimeOut := context.WithTimeout(context.TODO(), 1*time.Minute)
+	go func() {
+		//sctx, cancelTimeOut := context.WithTimeout(context.TODO(), 1*time.Minute)
+		tStart := time.Now()
+		<-sctx.Done() // will sit here until the timeout or cancelled
+		tStop := time.Now()
+
+		fmt.Println("D: ", tStop.Sub(tStart))
+
+		fmt.Println("T: ", time.Duration(1)*time.Minute)
+		if tStop.Sub(tStart) >= time.Duration(1)*time.Minute {
+			fmt.Println("entró!")
+			gameRoom.Mutex.Lock()
+			gameTimeOut = true
+			gameRoom.Mutex.Unlock()
+			gameRoom.gameChannel <- false
+		}
+	}()
+	<-timeOutChannel
+	cancelTimeOut()
+}
+
 //StartListen channel and wait for player's incomming messages, then it call socketRequest to classify
 func (gameRoom *GameRoom) StartListenSocketMessages() {
 	gameRoom.Wg.Add(1)
 	go func() {
 		defer gameRoom.Wg.Done()
 		for message := range gameRoom.IncommingMessagesChannel {
+			/*timeOutChannel := make(chan bool)
+			go gameRoom.timeOutGame(timeOutChannel)
+			timeOutChannel <- true*/
 			fmt.Println("message ", message)
 			if message.Action == "playerDisconnected" {
 				gameRoom.Wg.Done()
