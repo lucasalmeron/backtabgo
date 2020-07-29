@@ -384,10 +384,10 @@ func (gameRoom *GameRoom) StartListenSocketMessages() {
 				gameRoom.messagesTimeOut()
 			}
 			if message.Action == "closeConnection" {
+				gameRoom.closePlayersWg.Done()
 				gameRoom.Wg.Done()
 			}
 			if message.Action == "playerDisconnected" {
-				gameRoom.closePlayersWg.Done()
 				gameRoom.Wg.Done()
 			} else {
 				gameRoom.sendMessage(message.Action, message.Data, message.PlayerID)
