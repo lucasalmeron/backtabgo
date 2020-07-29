@@ -68,8 +68,37 @@ func (req *SocketRequest) Route() {
 func (req *SocketRequest) startGame() {
 	if req.gameRoom.Players[req.message.PlayerID].Admin &&
 		req.gameRoom.GameStatus == "roomPhase" &&
-		len(req.gameRoom.Settings.Decks) > 0 &&
 		len(req.gameRoom.Players) >= 4 {
+
+		if len(req.gameRoom.Settings.Decks) == 0 {
+			req.message.Action = "Error"
+			req.message.Data = ErrorMessage{400, "you must send at least one deck"}
+			req.gameRoom.Players[req.message.PlayerID].WriteMessage(req.message)
+			return
+		}
+
+		if req.gameRoom.Settings.GameTime < 5 || req.gameRoom.Settings.GameTime > 200 {
+			req.message.Action = "Error"
+			req.message.Data = ErrorMessage{400, "GameTime must be beetween 5 and 200 Minutes"}
+			req.gameRoom.Players[req.message.PlayerID].WriteMessage(req.message)
+			return
+		}
+		if req.gameRoom.Settings.TurnTime < 1 || req.gameRoom.Settings.TurnTime > 5 {
+			req.message.Action = "Error"
+			req.message.Data = ErrorMessage{400, "TurnTime must be beetween 1 and 5 Minutes"}
+			req.gameRoom.Players[req.message.PlayerID].WriteMessage(req.message)
+			return
+		}
+		if req.gameRoom.Settings.MaxPoints < 1 || req.gameRoom.Settings.MaxPoints > 300 {
+			req.message.Action = "Error"
+			req.message.Data = ErrorMessage{400, "MaxPoints must be beetween 1 and 300 Points"}
+			req.gameRoom.Players[req.message.PlayerID].WriteMessage(req.message)
+			return
+		}
+
+		/*if output.MaxTurnAttemps > 5 {
+			req.gameRoom.Settings.MaxTurnAttemps = output.MaxTurnAttemps
+		}*/
 
 		req.message.Data = "Starting game..."
 		for _, player := range req.gameRoom.Players {
@@ -348,35 +377,6 @@ func (req *SocketRequest) updateRoomOptions() {
 		j, _ := json.Marshal(req.message.Data)
 		json.Unmarshal(j, &output)
 		//parsing map[string] interface{} to struct
-
-		if len(output.Decks) == 0 {
-			req.message.Action = "Error"
-			req.message.Data = ErrorMessage{400, "you must send at least one deck"}
-			req.gameRoom.Players[req.message.PlayerID].WriteMessage(req.message)
-			return
-		}
-
-		if output.GameTime < 5 || output.GameTime > 200 {
-			req.message.Action = "Error"
-			req.message.Data = ErrorMessage{400, "GameTime must be beetween 5 and 200 Minutes"}
-			req.gameRoom.Players[req.message.PlayerID].WriteMessage(req.message)
-			return
-		}
-		if output.TurnTime < 1 || output.TurnTime > 5 {
-			req.message.Action = "Error"
-			req.message.Data = ErrorMessage{400, "TurnTime must be beetween 1 and 5 Minutes"}
-			req.gameRoom.Players[req.message.PlayerID].WriteMessage(req.message)
-			return
-		}
-		if output.MaxPoints < 1 || output.MaxPoints > 300 {
-			req.message.Action = "Error"
-			req.message.Data = ErrorMessage{400, "MaxPoints must be beetween 1 and 300 Points"}
-			req.gameRoom.Players[req.message.PlayerID].WriteMessage(req.message)
-			return
-		}
-		/*if output.MaxTurnAttemps > 5 {
-			req.gameRoom.Settings.MaxTurnAttemps = output.MaxTurnAttemps
-		}*/
 
 		req.gameRoom.Settings.GameTime = output.GameTime
 		req.gameRoom.Settings.TurnTime = output.TurnTime
