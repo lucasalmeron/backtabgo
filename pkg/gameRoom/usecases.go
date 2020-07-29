@@ -33,7 +33,7 @@ func NewGameRoom() *GameRoom {
 		Players:                  map[uuid.UUID]*player.Player{},
 		Team1Score:               0,
 		Team2Score:               0,
-		TeamTurn:                 1,
+		TeamTurn:                 2,
 		CurrentTurn:              &player.Player{},
 		GameStatus:               "roomPhase",
 		gameChannel:              make(chan bool),
@@ -160,21 +160,6 @@ func (gameRoom *GameRoom) setNextPlayer(currentIndex1 *int, currentIndex2 *int) 
 				}
 				break
 			}
-			/*if gameRoom.PlayersTeam1[*currentIndex1].Status == "connected" {
-				gameRoom.CurrentTurn = gameRoom.PlayersTeam1[*currentIndex1]
-				gameRoom.TeamTurn = 1
-				if len(gameRoom.PlayersTeam1)-1 == *currentIndex1 {
-					*currentIndex1 = 0
-				} else {
-					*currentIndex1++
-				}
-				break
-			}
-			if len(gameRoom.PlayersTeam1)-1 == *currentIndex1 {
-				*currentIndex1 = 0
-			} else {
-				*currentIndex1++
-			}*/
 		}
 	} else {
 		for {
@@ -356,13 +341,15 @@ func (gameRoom *GameRoom) messagesTimeOut() {
 		cancelTimeOut()
 	}
 
-	sctx, cancelTimeOut = context.WithTimeout(context.TODO(), 10*time.Minute)
+	sctx, cancelTimeOut = context.WithTimeout(context.TODO(), 1*time.Minute)
 	go func() {
 		tStart := time.Now()
 		<-sctx.Done() // will sit here until the timeout or cancelled
 		tStop := time.Now()
 
-		if tStop.Sub(tStart) >= time.Duration(1)*time.Minute {
+		fmt.Println("time: ", tStop.Sub(tStart))
+		if tStop.Sub(tStart) >= 9*time.Minute+59*time.Second {
+			cancelTimeOut()
 			gameRoom.Mutex.Lock()
 			gameTimeOut = true
 			gameRoom.Mutex.Unlock()
