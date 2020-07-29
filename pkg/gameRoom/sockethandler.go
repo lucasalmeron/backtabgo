@@ -10,6 +10,11 @@ import (
 	player "github.com/lucasalmeron/backtabgo/pkg/players"
 )
 
+type ErrorMessage struct {
+	Status  int
+	Message string
+}
+
 type SocketRequest struct {
 	message  player.Message
 	gameRoom *GameRoom
@@ -126,8 +131,8 @@ func (req *SocketRequest) waitingForPlayers() {
 func (req *SocketRequest) skipCard() {
 	if req.gameRoom.GameStatus == "turnInCourse" && req.gameRoom.CurrentTurn.ID == req.message.PlayerID {
 		if req.gameRoom.TotalCards == 0 {
-			req.message.Action = "emptyDecks"
-			req.message.Data = "there aren't more cards"
+			req.message.Action = "Error"
+			req.message.Data = ErrorMessage{500, "emptyDecks: there aren't more cards"}
 			for _, player := range req.gameRoom.Players {
 				player.WriteMessage(req.message)
 			}
@@ -153,8 +158,8 @@ func (req *SocketRequest) skipCard() {
 		//send card to controller players
 		err := req.gameRoom.TakeCard()
 		if err != nil {
-			req.message.Action = "emptyDecks"
-			req.message.Data = "there aren't more cards"
+			req.message.Action = "Error"
+			req.message.Data = ErrorMessage{500, "emptyDecks: there aren't more cards"}
 			for _, player := range req.gameRoom.Players {
 				player.WriteMessage(req.message)
 			}
@@ -208,8 +213,8 @@ func (req *SocketRequest) submitAttemp() {
 			//send card to controller players
 			err := req.gameRoom.TakeCard()
 			if err != nil {
-				req.message.Action = "emptyDecks"
-				req.message.Data = "there aren't more cards"
+				req.message.Action = "Error"
+				req.message.Data = ErrorMessage{500, "emptyDecks: there aren't more cards"}
 				for _, player := range req.gameRoom.Players {
 					player.WriteMessage(req.message)
 				}
@@ -278,8 +283,8 @@ func (req *SocketRequest) submitMistake() {
 					//send card to controller players
 					err := req.gameRoom.TakeCard()
 					if err != nil {
-						req.message.Action = "emptyDecks"
-						req.message.Data = "there aren't more cards"
+						req.message.Action = "Error"
+						req.message.Data = ErrorMessage{500, "emptyDecks: there aren't more cards"}
 						for _, player := range req.gameRoom.Players {
 							player.WriteMessage(req.message)
 						}
@@ -320,7 +325,8 @@ func (req *SocketRequest) getDecks() {
 	deckService := new(deck.Deck)
 	dbDecks, err := deckService.GetDecks()
 	if err != nil {
-		req.message.Data = "db error"
+		req.message.Action = "Error"
+		req.message.Data = ErrorMessage{500, "db error"}
 	}
 
 	req.message.Data = dbDecks
@@ -344,23 +350,27 @@ func (req *SocketRequest) updateRoomOptions() {
 		//parsing map[string] interface{} to struct
 
 		if len(output.Decks) == 0 {
-			req.message.Data = "you must send at least one deck"
+			req.message.Action = "Error"
+			req.message.Data = ErrorMessage{400, "you must send at least one deck"}
 			req.gameRoom.Players[req.message.PlayerID].WriteMessage(req.message)
 			return
 		}
 
 		if output.GameTime < 5 || output.GameTime > 200 {
-			req.message.Data = "GameTime must be beetween 5 and 200 Minutes"
+			req.message.Action = "Error"
+			req.message.Data = ErrorMessage{400, "GameTime must be beetween 5 and 200 Minutes"}
 			req.gameRoom.Players[req.message.PlayerID].WriteMessage(req.message)
 			return
 		}
 		if output.TurnTime < 1 || output.TurnTime > 5 {
-			req.message.Data = "TurnTime must be beetween 1 and 5 Minutes"
+			req.message.Action = "Error"
+			req.message.Data = ErrorMessage{400, "TurnTime must be beetween 1 and 5 Minutes"}
 			req.gameRoom.Players[req.message.PlayerID].WriteMessage(req.message)
 			return
 		}
 		if output.MaxPoints < 1 || output.MaxPoints > 300 {
-			req.message.Data = "MaxPoints must be beetween 1 and 300 Points"
+			req.message.Action = "Error"
+			req.message.Data = ErrorMessage{400, "MaxPoints must be beetween 1 and 300 Points"}
 			req.gameRoom.Players[req.message.PlayerID].WriteMessage(req.message)
 			return
 		}
@@ -376,7 +386,8 @@ func (req *SocketRequest) updateRoomOptions() {
 		deckService := new(deck.Deck)
 		dbDecks, err := deckService.GetDecksWithCards()
 		if err != nil {
-			req.message.Data = "db error"
+			req.message.Action = "Error"
+			req.message.Data = ErrorMessage{500, "db error"}
 		}
 
 		//clean map
@@ -421,7 +432,8 @@ func (req *SocketRequest) changeTeam() {
 			}
 			req.message.Data = req.gameRoom.Players[output.ID]
 		} else {
-			req.message.Data = "don't have permissions"
+			req.message.Action = "Error"
+			req.message.Data = ErrorMessage{401, "don't have permissions"}
 		}
 	} else {
 		if req.gameRoom.Players[req.message.PlayerID].Team == 1 {
