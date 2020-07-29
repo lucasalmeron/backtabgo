@@ -20,7 +20,7 @@
                     return false;
                 }
                 gameroomid = gameroom.value;
-                ws = new WebSocket("ws://127.0.0.1:3500/joinroom/"+gameroomid);
+                ws = new WebSocket("ws://127.0.0.1:3500/room/join/"+gameroomid);
                 ws.onopen = function (evt) {
                     print("OPEN");
                 }
@@ -48,7 +48,7 @@
                 return false;
             };
             document.getElementById("createroom").onclick = function (evt) {
-                fetch('http://localhost:3500/createroom')
+                fetch('http://localhost:3500/room/new')
                     .then(function(response) {
                         return response.json();
                     })
@@ -70,7 +70,7 @@
                 }
                 gameroomid = gameroom.value;
                 playerid = player.value;
-                ws = new WebSocket("ws://127.0.0.1:3500/reconnectroom/"+gameroomid+"/"+playerid);
+                ws = new WebSocket("ws://127.0.0.1:3500/room/reconnect"+gameroomid+"/"+playerid);
                 ws.onopen = function (evt) {
                     print("OPEN");
                 }

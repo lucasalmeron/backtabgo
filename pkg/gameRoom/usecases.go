@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
 	deck "github.com/lucasalmeron/backtabgo/pkg/decks"
 	player "github.com/lucasalmeron/backtabgo/pkg/players"
 )
@@ -55,16 +54,15 @@ func NewGameRoom() *GameRoom {
 	return gameRoom
 }
 
-func (gameRoom *GameRoom) AddPlayer(conn *websocket.Conn) {
+func (gameRoom *GameRoom) AddPlayer(conn player.WebSocket) {
 
 	gameRoom.Mutex.Lock()
 	playerNumber := strconv.Itoa(len(gameRoom.Players) + 1)
 	player := &player.Player{
-		ID:                       uuid.New(),
-		Name:                     "Player " + playerNumber,
-		Status:                   "connected",
-		Socket:                   conn,
-		IncommingMessagesChannel: gameRoom.IncommingMessagesChannel,
+		ID:     uuid.New(),
+		Name:   "Player " + playerNumber,
+		Status: "connected",
+		Socket: conn,
 	}
 
 	//set admin
@@ -98,11 +96,11 @@ func (gameRoom *GameRoom) AddPlayer(conn *websocket.Conn) {
 		gameRoom.PlayerConnectedChannel <- *player
 	}
 
-	player.Read(false)
+	player.ReadMessages(false, gameRoom.IncommingMessagesChannel)
 
 }
 
-func (gameRoom *GameRoom) ReconnectPlayer(conn *websocket.Conn, player *player.Player) {
+func (gameRoom *GameRoom) ReconnectPlayer(conn player.WebSocket, player *player.Player) {
 	gameRoom.Mutex.Lock()
 	player.Socket = conn
 	player.Status = "connected"
@@ -111,7 +109,7 @@ func (gameRoom *GameRoom) ReconnectPlayer(conn *websocket.Conn, player *player.P
 	if gameRoom.GameStatus == "waitingMinPlayers" {
 		gameRoom.PlayerConnectedChannel <- *player
 	}
-	player.Read(true)
+	player.ReadMessages(true, gameRoom.IncommingMessagesChannel)
 }
 
 //it check if are minimum 2 players in each team and it stay waiting for reconnects or connects
@@ -264,7 +262,7 @@ func (gameRoom *GameRoom) StartGame() {
 	}
 	for _, player := range gameRoom.Players {
 		gameRoom.closePlayersWg.Add(1)
-		player.Socket.Close()
+		player.Socket.CloseSocket()
 	}
 	gameRoom.closePlayersWg.Wait()
 	fmt.Println("game ended")
@@ -372,7 +370,7 @@ func (gameRoom *GameRoom) timeOutGame(timeOutChannel chan bool) {
 	cancelTimeOut()
 }
 
-//StartListen channel and wait for player's incomming messages, then it call socketRequest to classify
+//StartListen channel and wait for player's incomming messages, then it call socket handler to classify
 func (gameRoom *GameRoom) StartListenSocketMessages() {
 	gameRoom.Wg.Add(1)
 	go func() {
@@ -382,14 +380,11 @@ func (gameRoom *GameRoom) StartListenSocketMessages() {
 			go gameRoom.timeOutGame(timeOutChannel)
 			timeOutChannel <- true*/
 			fmt.Println("message ", message)
-			if message.Action == "playerDisconnected" {
-				gameRoom.Wg.Done()
-			}
-			if message.Action != "closeConnection" {
-				gameRoom.sendMessage(message.Action, message.Data, message.PlayerID)
-			} else {
+			if message.Action == "playerDisconnected" || message.Action == "closeConnection" {
 				gameRoom.closePlayersWg.Done()
 				gameRoom.Wg.Done()
+			} else {
+				gameRoom.sendMessage(message.Action, message.Data, message.PlayerID)
 			}
 		}
 	}()

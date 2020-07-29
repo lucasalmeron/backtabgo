@@ -8,8 +8,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/gorilla/websocket"
 	gameroom "github.com/lucasalmeron/backtabgo/pkg/gameRoom"
+	gorillawebsocket "github.com/lucasalmeron/backtabgo/pkg/websocket/gorilla"
 )
 
 type httpError struct {
@@ -20,7 +20,6 @@ type httpError struct {
 type httpRoomHandler struct{}
 
 var (
-	upgrader  = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 	gameRooms = map[uuid.UUID]*gameroom.GameRoom{}
 )
 
@@ -100,15 +99,14 @@ func (h httpRoomHandler) Join(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if gameRoom, ok := gameRooms[key]; ok {
-		conn, err := upgrader.Upgrade(w, r, nil)
+		socket, err := gorillawebsocket.Connect(w, r)
 		if err != nil {
 			fmt.Fprintf(w, "%+v\n", err)
 			json.NewEncoder(w).Encode(&httpError{http.StatusInternalServerError, err.Error()})
 			return
 		}
-
 		//Here it will wait for incomming messages
-		gameRoom.AddPlayer(conn)
+		gameRoom.AddPlayer(socket)
 
 	} else {
 		json.NewEncoder(w).Encode(&httpError{http.StatusBadRequest, "Game Room doesn't exist"})
@@ -141,7 +139,7 @@ func (h httpRoomHandler) Reconnect(w http.ResponseWriter, r *http.Request) {
 	if gameRoom, ok := gameRooms[roomKey]; ok {
 
 		if player, ok := gameRoom.Players[playerKey]; ok {
-			conn, err := upgrader.Upgrade(w, r, nil)
+			socket, err := gorillawebsocket.Connect(w, r)
 			if err != nil {
 				fmt.Fprintf(w, "%+v\n", err)
 				json.NewEncoder(w).Encode(&httpError{http.StatusInternalServerError, err.Error()})
@@ -149,7 +147,7 @@ func (h httpRoomHandler) Reconnect(w http.ResponseWriter, r *http.Request) {
 			}
 
 			//Here it will wait for incomming messages
-			gameRoom.ReconnectPlayer(conn, player)
+			gameRoom.ReconnectPlayer(socket, player)
 		}
 
 	} else {

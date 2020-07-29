@@ -1,12 +1,7 @@
 package player
 
 import (
-	"fmt"
-	"strings"
-	"time"
-
 	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
 )
 
 type Message struct {
@@ -16,21 +11,26 @@ type Message struct {
 }
 
 type Player struct {
-	ID                       uuid.UUID       `json:"id"`
-	Name                     string          `json:"name"`
-	Team                     int             `json:"team"`
-	Admin                    bool            `json:"admin"`
-	Status                   string          `json:"status"`
-	Socket                   *websocket.Conn `json:"-"`
-	IncommingMessagesChannel chan Message    `json:"-"`
+	ID     uuid.UUID `json:"id"`
+	Name   string    `json:"name"`
+	Team   int       `json:"team"`
+	Admin  bool      `json:"admin"`
+	Status string    `json:"status"`
+	Socket WebSocket `json:"-"`
 }
 
-func (c *Player) Write(message Message) {
-	c.Socket.WriteJSON(message)
+type WebSocket interface {
+	Write(message Message, playerTrigger uuid.UUID) error
+	Read(IncommingMessagesChannel chan Message, playerTrigger uuid.UUID)
+	CloseSocket() error
 }
 
-func (c *Player) Read(reconnect bool) {
-	defer c.Socket.Close()
+func (c *Player) WriteMessage(message Message) {
+	c.Socket.Write(message, c.ID)
+}
+
+func (c *Player) ReadMessages(reconnect bool, IncommingMessagesChannel chan Message) {
+
 	var message Message
 
 	if reconnect {
@@ -39,58 +39,8 @@ func (c *Player) Read(reconnect bool) {
 		message = Message{Action: "connected", Data: "connection success", PlayerID: c.ID}
 	}
 
-	c.Socket.SetReadDeadline(time.Now().Add(10 * time.Minute))
+	IncommingMessagesChannel <- message
 
-	c.IncommingMessagesChannel <- message
+	c.Socket.Read(IncommingMessagesChannel, c.ID)
 
-	for {
-
-		m := Message{}
-		err := c.Socket.ReadJSON(&m)
-		if err != nil {
-			if ok := strings.Contains(err.Error(), "timeout"); ok {
-				message = Message{Action: "playerDisconnected", Data: "Player kicked due to connection timeout", PlayerID: c.ID}
-				c.Status = "disconnected"
-				c.IncommingMessagesChannel <- message
-				fmt.Println("TimeOut", err)
-				break
-			}
-			if ok := strings.Contains(err.Error(), "websocket: close 1005 (no status)"); ok {
-				message = Message{Action: "playerDisconnected", Data: "Player Disconnected", PlayerID: c.ID}
-				c.Status = "disconnected"
-				c.IncommingMessagesChannel <- message
-				fmt.Println("Disconnected", err)
-				break
-			}
-			if ok := strings.Contains(err.Error(), "websocket: close 1001 (going away)"); ok {
-				message = Message{Action: "playerDisconnected", Data: "Player Disconnected", PlayerID: c.ID}
-				c.Status = "disconnected"
-				c.IncommingMessagesChannel <- message
-				fmt.Println("Disconnected", err)
-				break
-			}
-			if ok := strings.Contains(err.Error(), "websocket: close 1006 (abnormal closure): unexpected EOF"); ok {
-				message = Message{Action: "playerDisconnected", Data: "Player connection closed", PlayerID: c.ID}
-				c.Status = "disconnected"
-				c.IncommingMessagesChannel <- message
-				fmt.Println("Disconnected", err)
-				break
-			}
-			if ok := strings.Contains(err.Error(), "use of closed network connection"); ok {
-				message = Message{Action: "closeConnection", Data: "Close connection", PlayerID: c.ID}
-				c.IncommingMessagesChannel <- message
-				fmt.Println("closeConnection", err)
-				break
-			}
-			fmt.Printf("unexpected type %T", err)
-			fmt.Println("Error ", err)
-		}
-
-		m.PlayerID = c.ID
-
-		c.IncommingMessagesChannel <- m
-		//fmt.Printf("player: %+v\n", c)
-		//fmt.Printf("Got message: %#v\n", m)
-
-	}
 }

@@ -17,6 +17,7 @@ import (
 	deck "github.com/lucasalmeron/backtabgo/pkg/decks"
 	player "github.com/lucasalmeron/backtabgo/pkg/players"
 	mongostorage "github.com/lucasalmeron/backtabgo/pkg/storage/mongo"
+	gorillawebsocket "github.com/lucasalmeron/backtabgo/pkg/websocket/gorilla"
 )
 
 var (
@@ -91,7 +92,6 @@ func Test_socket(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Error on connect player: %v", err)
 			}
-
 			defer playerSocket.Close()
 
 			var message player.Message
@@ -114,13 +114,19 @@ func Test_socket(t *testing.T) {
 func handleSocketMessages(message *player.Message, playerSocket *websocket.Conn, t *testing.T) {
 	switch message.Action {
 	case "connected":
-		var pl player.Player
+		var data struct {
+			Player     *player.Player `json:"player"`
+			GameRoomID uuid.UUID      `json:"gameRoomID"`
+		}
 		j, _ := json.Marshal(message.Data)
-		json.Unmarshal(j, &pl)
-		pl.Socket = playerSocket
+		json.Unmarshal(j, &data)
+		var pl player.Player
+		pl = *data.Player
+		pl.Socket = &gorillawebsocket.Socket{playerSocket}
 		if pl.Admin {
 			playerAdmin = &pl
 		}
+
 		if pl.Status != "connected" {
 			t.Fatal("connect Error")
 		}
@@ -128,7 +134,7 @@ func handleSocketMessages(message *player.Message, playerSocket *websocket.Conn,
 		t.Logf("CONNECTED: %v", len(players))
 		if len(players) == numberOfPlayers {
 			t.Run("GET DECKS", func(t *testing.T) {
-				playerAdmin.Socket.WriteJSON(player.Message{"getDecks", nil, uuid.UUID{}})
+				playerAdmin.WriteMessage(player.Message{"getDecks", nil, uuid.UUID{}})
 			})
 		}
 	case "playerConnected":
@@ -161,9 +167,9 @@ func handleSocketMessages(message *player.Message, playerSocket *websocket.Conn,
 				Decks          []string `json:"decks"`
 				MaxPoints      int      `json:"maxPoints"`
 				TurnTime       int      `json:"turnTime"`
-				GameTime       int      `json:"gameTurn"`
+				GameTime       int      `json:"gameTime"`
 			}{0, stringDecks, 20, 1, 60}
-			playerAdmin.Socket.WriteJSON(player.Message{"updateRoomOptions", opt, uuid.UUID{}})
+			playerAdmin.WriteMessage(player.Message{"updateRoomOptions", opt, uuid.UUID{}})
 		})
 	case "updateRoomOptions":
 
@@ -173,12 +179,12 @@ func handleSocketMessages(message *player.Message, playerSocket *websocket.Conn,
 				for _, p := range players {
 					t.Logf("status: %v", p.Status)
 				}
-				playerAdmin.Socket.WriteJSON(player.Message{"startGame", nil, uuid.UUID{}})
+				playerAdmin.WriteMessage(player.Message{"startGame", nil, uuid.UUID{}})
 			})
 		})
 	case "nextPlayerTurn":
 		t.Logf("nxtTurn: %v", message.Data)
 	default:
-		//t.Logf("OTHER EVENT: %v", message)
+		t.Logf("OTHER EVENT: %v", message)
 	}
 }
