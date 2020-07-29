@@ -378,9 +378,11 @@ func (gameRoom *GameRoom) StartListenSocketMessages() {
 	go func() {
 		defer gameRoom.Wg.Done()
 		for message := range gameRoom.IncommingMessagesChannel {
-			gameRoom.messagesTimeOut()
-
 			fmt.Println("message ", message)
+
+			if message.Action != "keepAlive" {
+				gameRoom.messagesTimeOut()
+			}
 			if message.Action == "closeConnection" {
 				gameRoom.Wg.Done()
 			}
