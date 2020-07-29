@@ -262,14 +262,13 @@ func (gameRoom *GameRoom) StartGame() {
 	}
 	for _, player := range gameRoom.Players {
 		gameRoom.closePlayersWg.Add(1)
-		player.Socket.CloseSocket()
+		player.CloseSocket()
 	}
 	gameRoom.closePlayersWg.Wait()
 	fmt.Println("game ended")
 }
 
 func (gameRoom *GameRoom) TakeCard() error {
-	//{"action":"updateRoomOptions","data":{"turnTime":1,"maxPoints":50,"decks":["5efc0f2e2cbb5fc167518d51"]}}
 	if gameRoom.TotalCards > 0 {
 		var randKeyDeck string
 		var randKeyCard string
@@ -347,27 +346,30 @@ func (gameRoom *GameRoom) sendMessage(action string, message interface{}, trigge
 	gameRoom.Mutex.Unlock()
 }
 
-func (gameRoom *GameRoom) timeOutGame(timeOutChannel chan bool) {
-	sctx, cancelTimeOut := context.WithTimeout(context.TODO(), 1*time.Minute)
+var (
+	sctx          context.Context
+	cancelTimeOut context.CancelFunc
+)
+
+func (gameRoom *GameRoom) messagesTimeOut() {
+	if cancelTimeOut != nil {
+		cancelTimeOut()
+	}
+
+	sctx, cancelTimeOut = context.WithTimeout(context.TODO(), 10*time.Minute)
 	go func() {
-		//sctx, cancelTimeOut := context.WithTimeout(context.TODO(), 1*time.Minute)
 		tStart := time.Now()
 		<-sctx.Done() // will sit here until the timeout or cancelled
 		tStop := time.Now()
 
-		fmt.Println("D: ", tStop.Sub(tStart))
-
-		fmt.Println("T: ", time.Duration(1)*time.Minute)
 		if tStop.Sub(tStart) >= time.Duration(1)*time.Minute {
-			fmt.Println("entró!")
 			gameRoom.Mutex.Lock()
 			gameTimeOut = true
 			gameRoom.Mutex.Unlock()
 			gameRoom.gameChannel <- false
 		}
 	}()
-	<-timeOutChannel
-	cancelTimeOut()
+
 }
 
 //StartListen channel and wait for player's incomming messages, then it call socket handler to classify
@@ -376,11 +378,13 @@ func (gameRoom *GameRoom) StartListenSocketMessages() {
 	go func() {
 		defer gameRoom.Wg.Done()
 		for message := range gameRoom.IncommingMessagesChannel {
-			/*timeOutChannel := make(chan bool)
-			go gameRoom.timeOutGame(timeOutChannel)
-			timeOutChannel <- true*/
+			gameRoom.messagesTimeOut()
+
 			fmt.Println("message ", message)
-			if message.Action == "playerDisconnected" || message.Action == "closeConnection" {
+			if message.Action == "closeConnection" {
+				gameRoom.Wg.Done()
+			}
+			if message.Action == "playerDisconnected" {
 				gameRoom.closePlayersWg.Done()
 				gameRoom.Wg.Done()
 			} else {
