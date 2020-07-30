@@ -532,8 +532,17 @@ func (req *SocketRequest) reconnected() {
 func (req *SocketRequest) kickPlayer() {
 	if req.gameRoom.Players[req.message.PlayerID].Admin {
 		req.message.Action = "playerKicked"
-		req.message.Data = req.gameRoom.Players[req.message.Data.(uuid.UUID)]
-		delete(req.gameRoom.Players, req.message.Data.(uuid.UUID))
+		idPlayerKicked, err := uuid.Parse(req.message.Data.(string))
+		if err != nil {
+			req.message.Action = "Error"
+			req.message.Data = ErrorMessage{500, "parsing uuid"}
+		}
+		req.message.Data = req.gameRoom.Players[idPlayerKicked]
+		req.gameRoom.Players[idPlayerKicked].CloseSocket()
+		fmt.Println(idPlayerKicked)
+		fmt.Println(req.gameRoom.Players)
+		delete(req.gameRoom.Players, idPlayerKicked)
+		fmt.Println(req.gameRoom.Players)
 		for _, player := range req.gameRoom.Players {
 			player.WriteMessage(req.message)
 		}

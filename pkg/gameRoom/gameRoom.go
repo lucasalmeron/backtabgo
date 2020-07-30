@@ -1,6 +1,8 @@
 package gameroom
 
 import (
+	"math/rand"
+	"reflect"
 	"sync"
 
 	"github.com/google/uuid"
@@ -44,4 +46,43 @@ type GameRoom struct {
 	Wg                       sync.WaitGroup      `json:"-"`
 	closePlayersWg           sync.WaitGroup
 	Mutex                    sync.Mutex `json:"-"`
+}
+
+var (
+	gameTimeOut = false
+)
+
+//util
+func getRandomKeyOfMap(mapI interface{}) interface{} {
+	keys := reflect.ValueOf(mapI).MapKeys()
+
+	return keys[rand.Intn(len(keys))].Interface()
+}
+
+//NewGameRoom is a "constructor" of GameRoom
+func NewGameRoom() *GameRoom {
+	gameRoom := &GameRoom{
+		ID:                       uuid.New(),
+		Players:                  map[uuid.UUID]*player.Player{},
+		Team1Score:               0,
+		Team2Score:               0,
+		TeamTurn:                 2,
+		CurrentTurn:              &player.Player{},
+		GameStatus:               "roomPhase",
+		gameChannel:              make(chan bool),
+		PlayerConnectedChannel:   make(chan player.Player),
+		IncommingMessagesChannel: make(chan player.Message),
+		Settings: &GameSettings{
+			MaxPoints:      50,
+			MaxTurnAttemps: 0,
+			TurnTime:       1,
+			GameTime:       20,
+			Decks:          map[string]*deck.Deck{},
+		},
+		Wg:             sync.WaitGroup{},
+		closePlayersWg: sync.WaitGroup{},
+		Mutex:          sync.Mutex{},
+	}
+	gameRoom.StartListenSocketMessages()
+	return gameRoom
 }

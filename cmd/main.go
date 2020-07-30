@@ -5,7 +5,6 @@ import (
 )
 
 func main() {
-
 	server := new(server.Server)
 	server.Init()
 	server.ConnectMongoDB()
