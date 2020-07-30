@@ -53,7 +53,7 @@ func (gameRoom *GameRoom) StartListenSocketMessages() {
 
 		for message := range gameRoom.IncommingMessagesChannel {
 			fmt.Println("message ", message)
-			//PROXY PLAYER'S MESSAGES
+			//PLAYER'S MESSAGES PROXY
 			switch message.Action {
 			case "keepAlive":
 			case "closeConnection":
@@ -62,11 +62,10 @@ func (gameRoom *GameRoom) StartListenSocketMessages() {
 			case "playerDisconnected":
 				gameRoom.closePlayersWg.Done()
 				gameRoom.Wg.Done()
-			default:
-				gameRoom.sendMessage(message.Action, message.Data, message.PlayerID)
 				messagesTimeOut.Stop()
 				messagesTimeOut = gameRoom.messagesTimeOut(10, message.Action)
 			}
+			gameRoom.sendMessage(message.Action, message.Data, message.PlayerID)
 		}
 	}()
 }
