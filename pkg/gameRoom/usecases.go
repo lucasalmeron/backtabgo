@@ -341,13 +341,13 @@ func (gameRoom *GameRoom) messagesTimeOut() {
 		cancelTimeOut()
 	}
 
-	sctx, cancelTimeOut = context.WithTimeout(context.TODO(), 1*time.Minute)
+	sctx, cancelTimeOut = context.WithTimeout(context.TODO(), 10*time.Minute)
 	go func() {
 		tStart := time.Now()
 		<-sctx.Done() // will sit here until the timeout or cancelled
 		tStop := time.Now()
 
-		fmt.Println("time: ", tStop.Sub(tStart))
+		//fmt.Println("time: ", tStop.Sub(tStart))
 		if tStop.Sub(tStart) >= 9*time.Minute+59*time.Second {
 			cancelTimeOut()
 			gameRoom.Mutex.Lock()
