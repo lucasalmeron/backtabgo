@@ -421,15 +421,41 @@ func (req *SocketRequest) changeTeam() {
 	j, _ := json.Marshal(req.message.Data)
 	json.Unmarshal(j, output)
 	//parsing map[string] interface{} to struct
+	removePlayer := func(s []*player.Player, index int) []*player.Player {
+		return append(s[:index], s[index+1:]...)
+	}
 
 	//Change team other player if is admin
 	if output.ID != req.message.PlayerID {
 		if req.gameRoom.Players[req.message.PlayerID].Admin {
 			if req.gameRoom.Players[output.ID].Team == 1 {
+
 				req.gameRoom.Players[output.ID].Team = 2
+				for index, player := range req.gameRoom.PlayersTeam1 {
+					if player.ID == output.ID {
+						req.gameRoom.Mutex.Lock()
+						req.gameRoom.PlayersTeam1 = removePlayer(req.gameRoom.PlayersTeam1, index)
+						req.gameRoom.Mutex.Unlock()
+					}
+				}
+				req.gameRoom.Mutex.Lock()
+				req.gameRoom.PlayersTeam2 = append(req.gameRoom.PlayersTeam2, req.gameRoom.Players[output.ID])
+				req.gameRoom.Mutex.Unlock()
+
 			} else {
 				req.gameRoom.Players[output.ID].Team = 1
+				for index, player := range req.gameRoom.PlayersTeam2 {
+					if player.ID == output.ID {
+						req.gameRoom.Mutex.Lock()
+						req.gameRoom.PlayersTeam2 = removePlayer(req.gameRoom.PlayersTeam2, index)
+						req.gameRoom.Mutex.Unlock()
+					}
+				}
+				req.gameRoom.Mutex.Lock()
+				req.gameRoom.PlayersTeam1 = append(req.gameRoom.PlayersTeam1, req.gameRoom.Players[output.ID])
+				req.gameRoom.Mutex.Unlock()
 			}
+
 			req.message.Data = req.gameRoom.Players[output.ID]
 		} else {
 			req.message.Action = "Error"
@@ -438,8 +464,28 @@ func (req *SocketRequest) changeTeam() {
 	} else {
 		if req.gameRoom.Players[req.message.PlayerID].Team == 1 {
 			req.gameRoom.Players[req.message.PlayerID].Team = 2
+			for index, player := range req.gameRoom.PlayersTeam1 {
+				if player.ID == req.message.PlayerID {
+					req.gameRoom.Mutex.Lock()
+					req.gameRoom.PlayersTeam1 = removePlayer(req.gameRoom.PlayersTeam1, index)
+					req.gameRoom.Mutex.Unlock()
+				}
+			}
+			req.gameRoom.Mutex.Lock()
+			req.gameRoom.PlayersTeam2 = append(req.gameRoom.PlayersTeam2, req.gameRoom.Players[req.message.PlayerID])
+			req.gameRoom.Mutex.Unlock()
 		} else {
 			req.gameRoom.Players[req.message.PlayerID].Team = 1
+			for index, player := range req.gameRoom.PlayersTeam2 {
+				if player.ID == req.message.PlayerID {
+					req.gameRoom.Mutex.Lock()
+					req.gameRoom.PlayersTeam2 = removePlayer(req.gameRoom.PlayersTeam2, index)
+					req.gameRoom.Mutex.Unlock()
+				}
+			}
+			req.gameRoom.Mutex.Lock()
+			req.gameRoom.PlayersTeam1 = append(req.gameRoom.PlayersTeam1, req.gameRoom.Players[req.message.PlayerID])
+			req.gameRoom.Mutex.Unlock()
 		}
 		req.message.Data = req.gameRoom.Players[req.message.PlayerID]
 	}
@@ -539,10 +585,31 @@ func (req *SocketRequest) kickPlayer() {
 		}
 		req.message.Data = req.gameRoom.Players[idPlayerKicked]
 		req.gameRoom.Players[idPlayerKicked].CloseSocket()
-		fmt.Println(idPlayerKicked)
-		fmt.Println(req.gameRoom.Players)
+
 		delete(req.gameRoom.Players, idPlayerKicked)
-		fmt.Println(req.gameRoom.Players)
+
+		removePlayer := func(s []*player.Player, index int) []*player.Player {
+			return append(s[:index], s[index+1:]...)
+		}
+
+		if req.gameRoom.Players[idPlayerKicked].Team == 1 {
+			for index, player := range req.gameRoom.PlayersTeam1 {
+				if player.ID == idPlayerKicked {
+					req.gameRoom.Mutex.Lock()
+					req.gameRoom.PlayersTeam1 = removePlayer(req.gameRoom.PlayersTeam1, index)
+					req.gameRoom.Mutex.Unlock()
+				}
+			}
+		} else {
+			for index, player := range req.gameRoom.PlayersTeam2 {
+				if player.ID == idPlayerKicked {
+					req.gameRoom.Mutex.Lock()
+					req.gameRoom.PlayersTeam2 = removePlayer(req.gameRoom.PlayersTeam2, index)
+					req.gameRoom.Mutex.Unlock()
+				}
+			}
+		}
+
 		for _, player := range req.gameRoom.Players {
 			player.WriteMessage(req.message)
 		}
