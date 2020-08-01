@@ -23,3 +23,7 @@ func (c *Player) ReadMessages(reconnect bool, IncommingMessagesChannel chan Mess
 func (c *Player) CloseSocket() {
 	c.Socket.CloseSocket()
 }
+
+func (c *Player) ChangeName(newName string) {
+	c.Name = newName
+}

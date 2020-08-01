@@ -27,19 +27,20 @@ type GameSettings struct {
 type GameRoom struct {
 	ID                       uuid.UUID                    `json:"id"`
 	Players                  map[uuid.UUID]*player.Player `json:"-"`
-	Team1Score               int                          `json:"team1Score"`
-	Team2Score               int                          `json:"team2Score"`
-	PlayersTeam1             []*player.Player             `json:"team1"`
-	PlayersTeam2             []*player.Player             `json:"team2"`
-	TeamTurn                 int                          `json:"teamTurn"`
-	TurnTime                 int64                        `json:"turnTime"`
-	GameTime                 int64                        `json:"gameTime"`
-	TurnMistakes             []*TurnMistakes              `json:"teamMistakes"`
-	TotalCards               int                          `json:"totalCards"`
-	CurrentTurn              *player.Player               `json:"currentTurn"`
-	CurrentCard              *card.Card                   `json:"-"`
-	GameStatus               string                       `json:"gameStatus"`
-	Settings                 *GameSettings                `json:"settings"`
+	mapMutex                 sync.Mutex
+	Team1Score               int              `json:"team1Score"`
+	Team2Score               int              `json:"team2Score"`
+	PlayersTeam1             []*player.Player `json:"team1"`
+	PlayersTeam2             []*player.Player `json:"team2"`
+	TeamTurn                 int              `json:"teamTurn"`
+	TurnTime                 int64            `json:"turnTime"`
+	GameTime                 int64            `json:"gameTime"`
+	TurnMistakes             []*TurnMistakes  `json:"teamMistakes"`
+	TotalCards               int              `json:"totalCards"`
+	CurrentTurn              *player.Player   `json:"currentTurn"`
+	CurrentCard              *card.Card       `json:"-"`
+	GameStatus               string           `json:"gameStatus"`
+	Settings                 *GameSettings    `json:"settings"`
 	gameChannel              chan bool
 	PlayerConnectedChannel   chan player.Player  `json:"-"`
 	IncommingMessagesChannel chan player.Message `json:"-"`
@@ -64,6 +65,7 @@ func NewGameRoom() *GameRoom {
 	gameRoom := &GameRoom{
 		ID:                       uuid.New(),
 		Players:                  map[uuid.UUID]*player.Player{},
+		mapMutex:                 sync.Mutex{},
 		Team1Score:               0,
 		Team2Score:               0,
 		TeamTurn:                 2,

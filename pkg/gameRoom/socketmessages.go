@@ -10,6 +10,7 @@ import (
 
 //Send messages to handler
 func (gameRoom *GameRoom) sendMessage(action string, message interface{}, triggerPlayer uuid.UUID) {
+	//i should optimize mutex here
 	gameRoom.Mutex.Lock()
 	socketReq := SocketRequest{
 		message: player.Message{

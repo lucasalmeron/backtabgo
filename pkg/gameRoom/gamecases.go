@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	player "github.com/lucasalmeron/backtabgo/pkg/players"
 )
 
 func (gameRoom *GameRoom) StartGame() {
@@ -102,6 +103,45 @@ func (gameRoom *GameRoom) checkMinPlayersConnection() {
 
 		<-gameRoom.PlayerConnectedChannel
 	}
+}
+
+func (gameRoom *GameRoom) changeTeam(requestPlayer uuid.UUID, pl *player.Player) error {
+	defer gameRoom.mapMutex.Unlock()
+	gameRoom.mapMutex.Lock()
+	removePlayer := func(s []*player.Player, index int) []*player.Player {
+		return append(s[:index], s[index+1:]...)
+	}
+
+	changeTeam := func() {
+		if gameRoom.Players[requestPlayer].Team == 1 {
+			gameRoom.Players[requestPlayer].Team = 2
+			for index, player := range gameRoom.PlayersTeam1 {
+				if player.ID == requestPlayer {
+					gameRoom.PlayersTeam1 = removePlayer(gameRoom.PlayersTeam1, index)
+				}
+			}
+			gameRoom.PlayersTeam2 = append(gameRoom.PlayersTeam2, gameRoom.Players[requestPlayer])
+
+		} else {
+			gameRoom.Players[requestPlayer].Team = 1
+			for index, player := range gameRoom.PlayersTeam2 {
+				if player.ID == requestPlayer {
+					gameRoom.PlayersTeam2 = removePlayer(gameRoom.PlayersTeam2, index)
+				}
+			}
+			gameRoom.PlayersTeam1 = append(gameRoom.PlayersTeam1, gameRoom.Players[requestPlayer])
+		}
+	}
+
+	if gameRoom.Players[requestPlayer].Admin {
+		changeTeam()
+		return nil
+	}
+	if requestPlayer == pl.ID {
+		changeTeam()
+		return nil
+	}
+	return fmt.Errorf("don't have permissions")
 }
 
 func (gameRoom *GameRoom) setNextPlayer(currentIndex1 *int, currentIndex2 *int) {
