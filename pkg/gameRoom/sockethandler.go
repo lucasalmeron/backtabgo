@@ -584,6 +584,11 @@ func (req *SocketRequest) kickPlayer() {
 			req.message.Data = ErrorMessage{500, "parsing uuid"}
 		}
 		req.message.Data = req.gameRoom.Players[idPlayerKicked]
+
+		for _, player := range req.gameRoom.Players {
+			player.WriteMessage(req.message)
+		}
+
 		req.gameRoom.Players[idPlayerKicked].CloseSocket()
 
 		delete(req.gameRoom.Players, idPlayerKicked)
@@ -610,9 +615,6 @@ func (req *SocketRequest) kickPlayer() {
 			}
 		}
 
-		for _, player := range req.gameRoom.Players {
-			player.WriteMessage(req.message)
-		}
 	}
 
 }
