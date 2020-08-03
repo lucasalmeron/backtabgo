@@ -477,7 +477,7 @@ func (req *SocketRequest) connected() {
 
 func (req *SocketRequest) reconnected() {
 
-	req.message.Action = "connected"
+	req.message.Action = "reconnected"
 	req.message.Data = struct {
 		Player     *player.Player `json:"player"`
 		GameRoomID uuid.UUID      `json:"gameRoomID"`
