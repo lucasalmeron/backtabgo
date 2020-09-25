@@ -27,7 +27,7 @@ type GameSettings struct {
 type GameRoom struct {
 	ID                       uuid.UUID                    `json:"id"`
 	Players                  map[uuid.UUID]*player.Player `json:"-"`
-	mapMutex                 sync.Mutex
+	mapMutex                 sync.RWMutex
 	Team1Score               int              `json:"team1Score"`
 	Team2Score               int              `json:"team2Score"`
 	PlayersTeam1             []*player.Player `json:"team1"`
@@ -46,7 +46,7 @@ type GameRoom struct {
 	IncommingMessagesChannel chan player.Message `json:"-"`
 	Wg                       sync.WaitGroup      `json:"-"`
 	closePlayersWg           sync.WaitGroup
-	Mutex                    sync.Mutex `json:"-"`
+	Mutex                    sync.RWMutex `json:"-"`
 }
 
 var (
@@ -65,7 +65,7 @@ func NewGameRoom() *GameRoom {
 	gameRoom := &GameRoom{
 		ID:                       uuid.New(),
 		Players:                  map[uuid.UUID]*player.Player{},
-		mapMutex:                 sync.Mutex{},
+		mapMutex:                 sync.RWMutex{},
 		Team1Score:               0,
 		Team2Score:               0,
 		TeamTurn:                 2,
@@ -83,7 +83,7 @@ func NewGameRoom() *GameRoom {
 		},
 		Wg:             sync.WaitGroup{},
 		closePlayersWg: sync.WaitGroup{},
-		Mutex:          sync.Mutex{},
+		Mutex:          sync.RWMutex{},
 	}
 	gameRoom.StartListenSocketMessages()
 	return gameRoom

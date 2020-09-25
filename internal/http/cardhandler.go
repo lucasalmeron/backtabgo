@@ -13,7 +13,7 @@ import (
 type httpCardHandler struct{}
 
 func InitCardHandler(router *mux.Router) {
-	handler := new(httpDeckHandler)
+	handler := new(httpCardHandler)
 
 	router.Path("/cards").HandlerFunc(handler.GetCards).Methods(http.MethodGet, http.MethodOptions)
 	router.Path("/cards/{cardID:[0-9a-fA-F]{24}}").HandlerFunc(handler.GetCard).Methods(http.MethodGet, http.MethodOptions)
@@ -23,7 +23,7 @@ func InitCardHandler(router *mux.Router) {
 
 }
 
-func (h httpDeckHandler) GetCards(w http.ResponseWriter, r *http.Request) {
+func (h httpCardHandler) GetCards(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
@@ -38,7 +38,7 @@ func (h httpDeckHandler) GetCards(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(dbCards)
 }
 
-func (h httpDeckHandler) GetCard(w http.ResponseWriter, r *http.Request) {
+func (h httpCardHandler) GetCard(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
@@ -55,7 +55,7 @@ func (h httpDeckHandler) GetCard(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(dbCard)
 }
 
-func (h httpDeckHandler) NewCard(w http.ResponseWriter, r *http.Request) {
+func (h httpCardHandler) NewCard(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
@@ -87,7 +87,7 @@ func (h httpDeckHandler) NewCard(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(newCard)
 }
 
-func (h httpDeckHandler) UpdateCard(w http.ResponseWriter, r *http.Request) {
+func (h httpCardHandler) UpdateCard(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 

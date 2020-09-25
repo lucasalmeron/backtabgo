@@ -100,15 +100,13 @@ func (req *SocketRequest) startGame() {
 		}*/
 
 		req.message.Data = "Starting game..."
-		for _, player := range req.gameRoom.Players {
-			player.WriteMessage(req.message)
-		}
+		req.broadcast()
+
 		go req.gameRoom.StartGame()
+
 		req.message.Action = "gameStarted"
 		req.message.Data = "Game started"
-		for _, player := range req.gameRoom.Players {
-			player.WriteMessage(req.message)
-		}
+		req.broadcast()
 	}
 }
 
@@ -119,9 +117,7 @@ func (req *SocketRequest) playTurn() {
 		//broadcast gamestatus and give a new card to player
 		req.message.Action = "turnStarted"
 		req.message.Data = req.gameRoom
-		for _, player := range req.gameRoom.Players {
-			player.WriteMessage(req.message)
-		}
+		req.broadcast()
 
 		req.message.Action = "yourCard"
 		req.message.Data = req.gameRoom.CurrentCard
@@ -145,15 +141,11 @@ func (req *SocketRequest) playTurn() {
 func (req *SocketRequest) broadcastNextPlayerTurn() {
 	req.message.Action = "nextPlayerTurn"
 	req.message.Data = req.gameRoom
-	for _, player := range req.gameRoom.Players {
-		player.WriteMessage(req.message)
-	}
+	req.broadcast()
 }
 
 func (req *SocketRequest) waitingForPlayers() {
-	for _, player := range req.gameRoom.Players {
-		player.WriteMessage(req.message)
-	}
+	req.broadcast()
 }
 
 func (req *SocketRequest) skipCard() {
@@ -161,15 +153,11 @@ func (req *SocketRequest) skipCard() {
 		if req.gameRoom.TotalCards == 0 {
 			req.message.Action = "Error"
 			req.message.Data = ErrorMessage{500, "emptyDecks: there aren't more cards"}
-			for _, player := range req.gameRoom.Players {
-				player.WriteMessage(req.message)
-			}
+			req.broadcast()
 			return
 		}
 		req.message.Action = "cardSkipped"
-		for _, player := range req.gameRoom.Players {
-			player.WriteMessage(req.message)
-		}
+		req.broadcast()
 		if req.gameRoom.Players[req.gameRoom.CurrentTurn.ID].Team == 1 {
 			req.gameRoom.Team1Score--
 		} else {
@@ -179,18 +167,14 @@ func (req *SocketRequest) skipCard() {
 		//send gameStatus
 		req.message.Action = "gameStatus"
 		req.message.Data = req.gameRoom
-		for _, player := range req.gameRoom.Players {
-			player.WriteMessage(req.message)
-		}
+		req.broadcast()
 
 		//send card to controller players
 		err := req.gameRoom.TakeCard()
 		if err != nil {
 			req.message.Action = "Error"
 			req.message.Data = ErrorMessage{500, "emptyDecks: there aren't more cards"}
-			for _, player := range req.gameRoom.Players {
-				player.WriteMessage(req.message)
-			}
+			req.broadcast()
 			return
 		}
 		req.message.Action = "yourCard"
@@ -227,25 +211,19 @@ func (req *SocketRequest) submitAttemp() {
 
 			attempMessage.SuccessAttemp = true
 			req.message.Data = attempMessage
-			for _, player := range req.gameRoom.Players {
-				player.WriteMessage(req.message)
-			}
+			req.broadcast()
 
 			//send gameStatus
 			req.message.Action = "gameStatus"
 			req.message.Data = req.gameRoom
-			for _, player := range req.gameRoom.Players {
-				player.WriteMessage(req.message)
-			}
+			req.broadcast()
 
 			//send card to controller players
 			err := req.gameRoom.TakeCard()
 			if err != nil {
 				req.message.Action = "Error"
 				req.message.Data = ErrorMessage{500, "emptyDecks: there aren't more cards"}
-				for _, player := range req.gameRoom.Players {
-					player.WriteMessage(req.message)
-				}
+				req.broadcast()
 				return
 			}
 			req.message.Action = "yourCard"
@@ -264,9 +242,7 @@ func (req *SocketRequest) submitAttemp() {
 		} else {
 			attempMessage.SuccessAttemp = false
 			req.message.Data = attempMessage
-			for _, player := range req.gameRoom.Players {
-				player.WriteMessage(req.message)
-			}
+			req.broadcast()
 		}
 	}
 
@@ -292,9 +268,7 @@ func (req *SocketRequest) submitMistake() {
 				mistake.Players = append(mistake.Players, req.gameRoom.Players[req.message.PlayerID])
 				if len(mistake.Players) > (lengthPlayers / 2) {
 					req.message.Action = "playerMistake"
-					for _, player := range req.gameRoom.Players {
-						player.WriteMessage(req.message)
-					}
+					req.broadcast()
 					if req.gameRoom.Players[req.gameRoom.CurrentTurn.ID].Team == 1 {
 						req.gameRoom.Team1Score--
 					} else {
@@ -304,18 +278,14 @@ func (req *SocketRequest) submitMistake() {
 					//send gameStatus
 					req.message.Action = "gameStatus"
 					req.message.Data = req.gameRoom
-					for _, player := range req.gameRoom.Players {
-						player.WriteMessage(req.message)
-					}
+					req.broadcast()
 
 					//send card to controller players
 					err := req.gameRoom.TakeCard()
 					if err != nil {
 						req.message.Action = "Error"
 						req.message.Data = ErrorMessage{500, "emptyDecks: there aren't more cards"}
-						for _, player := range req.gameRoom.Players {
-							player.WriteMessage(req.message)
-						}
+						req.broadcast()
 						return
 					}
 					req.message.Action = "yourCard"
@@ -338,9 +308,7 @@ func (req *SocketRequest) submitMistake() {
 				} else {
 					req.message.Action = "mistakeSubmitted"
 					req.message.Data = req.gameRoom.TurnMistakes
-					for _, player := range req.gameRoom.Players {
-						player.WriteMessage(req.message)
-					}
+					req.broadcast()
 					break
 				}
 			}
@@ -407,9 +375,7 @@ func (req *SocketRequest) updateRoomOptions() {
 
 		req.message.Data = req.gameRoom
 		//broadcast Options
-		for _, player := range req.gameRoom.Players {
-			player.WriteMessage(req.message)
-		}
+		req.broadcast()
 	}
 }
 
@@ -433,9 +399,7 @@ func (req *SocketRequest) changeTeam() {
 
 	req.message.Data = req.gameRoom.Players[output.ID]
 
-	for _, player := range req.gameRoom.Players {
-		player.WriteMessage(req.message)
-	}
+	req.broadcast()
 
 }
 
@@ -526,9 +490,7 @@ func (req *SocketRequest) kickPlayer() {
 			req.message.Data = ErrorMessage{500, "parsing uuid"}
 		}
 		req.message.Data = req.gameRoom.Players[idPlayerKicked]
-		for _, player := range req.gameRoom.Players {
-			player.WriteMessage(req.message)
-		}
+		req.broadcast()
 
 		req.gameRoom.KickPlayer(idPlayerKicked)
 	}
@@ -538,9 +500,7 @@ func (req *SocketRequest) kickPlayer() {
 func (req *SocketRequest) playerDisconnected() {
 	//maybe i should set new admin here
 	req.message.Data = req.gameRoom.Players[req.message.PlayerID]
-	for _, player := range req.gameRoom.Players {
-		player.WriteMessage(req.message)
-	}
+	req.broadcast()
 }
 
 func (req *SocketRequest) changeName() {
@@ -548,18 +508,22 @@ func (req *SocketRequest) changeName() {
 	req.gameRoom.Players[req.message.PlayerID].ChangeName(fmt.Sprintf("%v", req.message.Data))
 	req.gameRoom.mapMutex.Unlock()
 	req.message.Data = req.gameRoom.Players[req.message.PlayerID]
-	for _, player := range req.gameRoom.Players {
-		player.WriteMessage(req.message)
-	}
+	req.broadcast()
 }
 
 func (req *SocketRequest) gameEnded() {
-	for _, player := range req.gameRoom.Players {
-		player.WriteMessage(req.message)
-	}
+	req.broadcast()
 }
 
 func (req *SocketRequest) keepAlive() {
 	req.message.Data = "OK"
 	req.gameRoom.Players[req.message.PlayerID].WriteMessage(req.message)
+}
+
+func (req *SocketRequest) broadcast() {
+	req.gameRoom.mapMutex.RLock()
+	for _, player := range req.gameRoom.Players {
+		player.WriteMessage(req.message)
+	}
+	req.gameRoom.mapMutex.RUnlock()
 }
